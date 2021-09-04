@@ -1,6 +1,7 @@
 README.md
 
-
+# Claim
+For all the files, any directory or functions developed by or related to Bind Benefits.Inc have been omitted or masked.  
 
 # py: 
 Contains Python3 notebooks fo the Equity OKR project. The most important files are: race_ebm_funcs.py and main.py
