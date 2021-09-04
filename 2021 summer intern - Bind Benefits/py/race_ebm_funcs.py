@@ -3,9 +3,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
 import sys
-sys.path.append('../../../../DataScience/lib/')
-import pymei
-from dev.bind_prod_utils import utils as dev_utils
+
 import numpy as np
 
 #sql query to get the data, ebm end date as an argument
