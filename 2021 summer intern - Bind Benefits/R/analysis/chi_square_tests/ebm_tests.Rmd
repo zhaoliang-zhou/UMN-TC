@@ -1,0 +1,26 @@
+---
+title: "ebm_tests"
+author: "Leo Zhou"
+date: "7/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Aggregate level
+```{r}
+#load the data
+
+
+agg_tab <- read.csv("C:/Users/leo.zhou/Desktop/Equity OKR/R/analysis/chi_square_tests/data/aggregate_numerator_tab.csv",
+                    na.strings=c("","NA"))
+
+```
+
+
+
+

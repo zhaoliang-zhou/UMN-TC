@@ -1,0 +1,107 @@
+---
+title: "Untitled"
+author: "Leo Zhou"
+date: "7/1/2021"
+output: html_document
+---
+
+
+```{r}
+race.df <- read.csv("C:/Users/leo.zhou/Desktop/Equity OKR/R/data/race_ebm_analysis.csv",
+                    na.strings=c("","NA"))
+
+```
+
+
+
+```{r}
+head(race.df)
+```
+
+```{r}
+summary(race.df)
+```
+
+```{r}
+race.df$over.underuse <- as.factor(race.df$over.underuse)
+race.df$predicted_race <- as.factor(race.df$predicted_race)
+race.df$gender <- as.factor(race.df$gender)
+race.df$adi_natrank <- as.numeric(race.df$adi_natrank)
+```
+
+
+
+```{r}
+hist(race.df$numerator, xlim = c(0,3))
+```
+
+
+```{r}
+mod.lm <- lm(numerator ~ predicted_race + gender + age + adi_natrank, data = race.df)
+summary(mod.lm)
+```
+```{r}
+plot(mod.lm)
+```
+```{r}
+race.df[race.df$numerator ==2 ,] 
+```
+
+```{r}
+sub.df <- race.df[race.df$numerator < 1 & race.df$numerator > 0 , ] 
+```
+
+
+
+```{r}
+sub.df$ci_measure_cat <- as.factor(sub.df$ci_measure_cat )
+```
+
+```{r}
+summary(sub.df)
+```
+
+
+
+```{r}
+sub2.df <- race.df[race.df$denominator ==2 ,] 
+sub2.df$ci_measure_cat <- as.factor(sub2.df$ci_measure_cat )
+sub2.df$ebm_measure_label <- as.factor(sub2.df$ebm_measure_label)
+summary(sub2.df)
+```
+
+```{r}
+sub2.df[sub2.df$ebm_measure_label == "IQI_21_TOTAL_2017 - Cesarean Delivery Rate, Uncomplicated (Overall)" | sub2.df$ebm_measure_label == "IQI_34_TOTAL_2017 - Vaginal Birth After Cesarean (VBAC) Rate, All (Overall)", 4] 
+```
+
+
+
+# EDA 
+
+
+```{r}
+race.df$numerator[over.df$numerator == 2 ] <- 1
+```
+
+
+```{r}
+race.df$ci_measure_cat <- as.factor(over.df$ci_measure_cat)
+levels(over.df$ci_measure_cat)
+```
+
+
+
+```{r}
+#for regression purpose, remove all the NYU measures
+over.df <- over.df[over.df$ci_measure_cat != "NYU",]
+summary(over.df)
+```
+
+
+
+
+
+
+
+
+

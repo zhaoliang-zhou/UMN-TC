@@ -1,0 +1,176 @@
+---
+title: "EDA"
+author: "Leo Zhou"
+date: "7/19/2021"
+output: html_document
+---
+
+
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(lattice)
+library(gpairs)
+library(corrplot)
+```
+
+# Data Cleaning
+```{r}
+race.df <- read.csv("C:/Users/leo.zhou/Desktop/Equity OKR/R/data/race_ebm_analysis.csv",
+                    na.strings=c("","NA"))
+
+```
+
+
+
+```{r}
+race.df$over.underuse <- as.factor(race.df$over.underuse)
+race.df$predicted_race <- as.factor(race.df$predicted_race)
+race.df$gender <- as.factor(race.df$gender)
+race.df$adi_natrank <- as.numeric(race.df$adi_natrank)
+```
+
+
+
+```{r}
+race.df$numerator[race.df$numerator == 2 ] <- 1
+```
+
+
+```{r}
+race.df$ci_measure_cat <- as.factor(race.df$ci_measure_cat)
+levels(race.df$ci_measure_cat)
+```
+
+
+
+```{r}
+#for regression purpose, remove all the NYU measures
+race.df <- race.df[race.df$ci_measure_cat != "NYU",]
+summary(race.df)
+```
+```{r}
+race.df$ebm_measure_label <- as.factor(race.df$ebm_measure_label)
+levels(race.df$ebm_measure_label)
+```
+
+
+# EDA
+  
+```{r}
+ggplot(race.df, aes(x = factor(numerator), fill = factor(numerator) )) + 
+  geom_bar() + 
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  labs(fill = "numerator") +
+  labs(title = "Measure received count barplot", x = "Measure received") +
+  scale_x_discrete(labels=c("No", "Yes")) + 
+  theme(legend.position = "none")
+  
+
+ 
+
+
+```
+## Race
+```{r}
+ggplot(race.df, aes(x = forcats::fct_infreq(predicted_race), fill = predicted_race )) + 
+  geom_bar() + 
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  labs(fill = "predicted race") +
+  labs(title = "Race barplot", x = "predicted race") 
+  
+
+ 
+
+```
+
+
+```{r}
+ggplot(data=race.df, aes(x = age)) + 
+  geom_histogram() + 
+  scale_x_continuous(breaks = seq(0, 100, len = 11))
+```
+```{r}
+gpairs(race.df[, c("predicted_race", "gender", "age", )])
+
+```
+
+
+
+```{r}
+
+age_ebm_tab <- race.df %>%  
+    na.omit() %>%
+    group_by(ebm_measure_label) %>% 
+    summarize(average_age=mean(age))
+```
+
+
+
+
+```{r}
+ggplot(race.df, aes(x = gender )) + 
+  geom_bar() + 
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  labs(title = "Gender count barplot") 
+  
+```
+
+```{r}
+ggplot(data=race.df, aes(x = adi_natrank)) + 
+  geom_histogram() + 
+  labs(x = "NDI")
+```
+
+```{r}
+sub.df <- race.df[, c("predicted_race", "age", "gender", "adi_natrank")]
+```
+
+```{r}
+cor(race.df$adi_natrank,race.df$age ,method = "pearson", use = "complete.obs")
+```
+
+
+
+```{r}
+
+race_ndi_tab <- race.df %>%  
+    na.omit() %>%
+    group_by(predicted_race) %>% 
+    summarize(average_ndi=mean(adi_natrank))
+race_ndi_tab
+```
+
+
+```{r}
+
+gender_ndi_tab <- race.df %>%  
+    na.omit() %>%
+    group_by(gender) %>% 
+    summarize(average_ndi=mean(adi_natrank))
+gender_ndi_tab
+```
+
+```{r}
+length(unique(race.df$member_number))
+```
+
+```{r}
+missrace.df <- subset(race.df , is.na(predicted_race))
+```
+
+
+```{r}
+nrow(missrace.df)
+```
+
+
+```{r}
+length(unique(missrace.df$member_number))
+```
+
+
+
+
+

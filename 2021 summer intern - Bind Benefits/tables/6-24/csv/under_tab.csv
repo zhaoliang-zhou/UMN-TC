@@ -1,0 +1,33 @@
+ebm_measure_label,White,Black,Hispanic,API,AIAN,2prace
+ADD_R1_2020C - Follow-Up Care for Children Prescribed ADHD Medication: Initiation Phase,0.5263157894736842,1.0,1.0,,,
+ADD_R2_2020C - Follow-Up Care for Children Prescribed ADHD Medication: Continuation & Maintenance Phase,0.5555555555555556,,,,,
+APP_TOTAL_2020 - Use of First-Line Psychosocial Care for Children and Adolescents on Antipsychotics (Total),0.5454545454545454,1.0,,,,
+CDC_A1C_T_2020C - Comprehensive Diabetes Care: Hemoglobin A1c (HbA1c) Testing,0.8228176318063959,0.8074866310160428,0.7608695652173914,0.8732394366197183,1.0,
+CHL_TOTAL_2020C - Chlamydia Screening in Women (Total),0.34029227557411273,0.5294117647058824,0.41379310344827586,0.35714285714285715,0.25,0.0
+COL_NON_MCR_2020C - Colorectal Cancer Screening,0.23293768545994065,0.35,0.16666666666666666,0.16129032258064516,0.0,
+FUA30_TOTAL_2020 - Follow-Up After Emergency Department Visit for Alcohol and Other Drug Abuse or Dependence : 30 days (Overall),0.2,0.0,0.0,0.0,,
+FUA7_TOTAL_2020 - Follow-Up After Emergency Department Visit for Alcohol and Other Drug Abuse or Dependence : 07 days (Overall),0.2,0.0,0.0,0.0,,
+FUH_30_TOTAL_2020 - Follow-Up After Hospitalization for Mental Illness: Total (30 Days Post-Discharge),0.7261904761904762,0.5,0.8,0.75,,
+FUH_7_TOTAL_2020 - Follow-Up After Hospitalization for Mental Illness: Total (7 Days Post-Discharge),0.5116279069767442,0.5,0.6,0.75,,
+FUM_30_TOTAL_2020 - Follow-Up After Emergency Department Visit for Mental Illness (Total)-30 Day Follow-Up,0.6666666666666666,0.6666666666666666,0.5,1.0,,
+FUM_7_TOTAL_2020 - Follow-Up After Emergency Department Visit for Mental Illness (Total)-7 Day Follow-Up,0.4,0.5714285714285714,0.4,0.0,,
+IMA_HPV_2020 - Immunizations for Adolescents: HPV Vaccine,0.08227848101265822,0.0,0.0,0.16666666666666666,0.0,
+IMA_MEN_2020 - Immunizations for Adolescents: Meningococcal Conjugate or Meningococcal Polysaccharide Vaccine,0.35443037974683544,0.0,0.15384615384615385,0.25,0.0,
+IMA_TD_2020 - Immunizations for Adolescents: Tdap Vaccine,0.31645569620253167,0.0,0.07692307692307693,0.25,0.0,
+NCS_2020 - Non-Recommended Cervical Cancer Screening in Adolescent Females,0.005198180636777128,0.0,0.0,0.0,0.0,0.0
+"NYU_EM_ED_PA_2016 - NYU ED Utilization Algorithm: Emergent, ED Care Needed, Preventable/Avoidable",0.04067446874037573,0.06257606490872211,0.04799573560767591,0.034508196721311474,0.05444444444444444,0.0
+PPC_PN_2020C - Prenatal and Postpartum Care: Prenatal Care,0.3286219081272085,0.5357142857142857,0.48,0.3225806451612903,,
+PPC_PP_2020C - Prenatal and Postpartum Care: Postpartum Care,0.48056537102473496,0.5357142857142857,0.36,0.5161290322580645,,
+PQA_BB_2018 - Percentage of members 18 years and older who met the PDC threshold of 80% for beta-blockers during the measurement period.,0.6687965921192758,0.44642857142857145,0.6086956521739131,0.6190476190476191,1.0,
+PQA_RASA_2018 - Percentage of members 18 years and older who met the PDC threshold of 80% for Renin Angiotensin System Antagonists during the measurement period.,0.7563842723956222,0.5947712418300654,0.6304347826086957,0.6741573033707865,0.75,
+SAA_2020 - Adherence to Antipsychotic Medications for Individuals with Schizophrenia,0.7777777777777778,0.0,0.0,0.0,,
+"SPC_R1_TOTAL_2020 - Statin Therapy for Patients with Cardiovascular Disease, Rate 1: Received Statin Therapy (Total)",0.9285714285714286,1.0,1.0,1.0,,
+"SPC_R2_TOTAL_2020 - Statin Therapy for Patients with Cardiovascular Disease, Rate 2: Statin Adherence 80% (Total)",0.7692307692307693,0.0,1.0,0.0,,
+W15_V00_2020C - Well-Child Visits in the First 15 Months of Life: 0 Visits,0.018018018018018018,0.0,0.0,0.0,,
+W15_V01_2020C - Well-Child Visits in the First 15 Months of Life: 1 Visit,0.009009009009009009,0.0,0.0,0.0,,
+W15_V02_2020C - Well-Child Visits in the First 15 Months of Life: 2 Visits,0.02702702702702703,0.0,0.0,0.0,,
+W15_V03_2020C - Well-Child Visits in the First 15 Months of Life: 3 Visits,0.018018018018018018,0.0,0.0,0.0,,
+W15_V04_2020C - Well-Child Visits in the First 15 Months of Life: 4 Visits,0.06306306306306306,0.0,0.25,0.125,,
+W15_V05_2020C - Well-Child Visits in the First 15 Months of Life: 5 Visits,0.1981981981981982,0.6666666666666666,0.0,0.25,,
+W15_V06+_2020C - Well-Child Visits in the First 15 Months of Life: 6 or more Visits,0.6666666666666666,0.3333333333333333,0.75,0.625,,
+"W34_2020C - Well-Child Visits in the Third, Fourth, Fifth and Sixth Years of Life",0.7007592675301474,0.5625,0.6623376623376623,0.6715686274509803,,0.0

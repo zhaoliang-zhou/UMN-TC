@@ -1,0 +1,1158 @@
+---
+ title: "EBM analysis"
+ author: "Leo Zhou"
+ date: "`r Sys.Date()`"
+ output:
+   rmdformats::downcute:
+     self_contained: yes
+     thumbnails: yes
+     lightbox: yes
+     gallery: no
+     highlight: tango
+   html_document:
+     df_print: paged
+---
+
+
+
+<!-- # --- -->
+<!-- # title: "ebm_analysis" -->
+<!-- # author: "Leo Zhou" -->
+<!-- # date: "7/9/2021" -->
+<!-- # output: html_document -->
+<!-- # --- -->
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(warn=-1)
+```
+
+```{r, echo=FALSE}
+print("Last run on")
+format(Sys.Date(),)
+```
+
+```{r, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(lme4)
+library(MASS)
+library(geepack)
+library(glmmLasso)
+library(car)
+library(MuMIn)
+library(afex)
+library(blme)
+library(magrittr)
+library(ggeffects)
+library(sjmisc)
+library(splines)
+```
+
+
+
+
+
+
+## Functions {.tabset .tabset-fade .tabset-pills}
+```{r}
+lrAcc <- function(lrMod, responseVar, use.ranef=TRUE){
+    ## convert response variable into a factor if it's not one
+  if(!is.factor(model.frame(lrMod)[,responseVar])){
+    model.frame(lrMod)[,responseVar] <- as.factor(model.frame(lrMod)[,responseVar])
+  }
+
+    ## model predictions in log-odds
+  if(use.ranef){
+    preds = predict(lrMod, newdata=model.frame(lrMod))
+  } else{
+    ## predict for average participant/item/other
+        preds = predict(lrMod, newdata=model.frame(lrMod), re.form=NA)
+  }
+    ## transform to 0/1 prediction
+    preds <- ((sign(preds)/2)+0.5)
+    
+    ## response variable values, transformed to 0/1
+    respVarValues <- model.frame(lrMod)[,responseVar]
+    ## if the response is already 0/1, just use it
+    if(is.numeric(respVarValues)){
+        y <- respVarValues
+    } else{
+        ## otherwise, transform to 0/1
+        y <- (as.numeric(model.frame(lrMod)[,responseVar])-1)
+    }
+    
+    ## how often is prediction the same as the actual response
+    acc <- sum(preds==y)/length(preds)
+    
+    return(acc)
+    
+}
+
+baselineAcc <- function(lrMod, responseVar){
+    response <- model.frame(lrMod)[,responseVar]
+    tab <- table(response)
+    return(max(tab)/sum(tab))
+}
+```
+
+## Overuse EBM {.tabset .tabset-fade .tabset-pills}
+
+### Data cleaning
+```{r}
+over.df <- read.csv("C:/Users/leo.zhou/Desktop/Equity OKR/R/data/overuse_df.csv",
+                    na.strings=c("","NA"))
+
+```
+
+```{r echo = T, results = 'hide'}
+summary(over.df)
+```
+
+
+```{r}
+hist(over.df$numerator)
+```
+
+```{r}
+#there are some numerators = 2, and the denominator = 2, for regression purpose, change those to 1
+#over.df[over.df$numerator==2,]
+```
+
+```{r}
+#for regression purpose, set the denominator == 2 to 1
+over.df$numerator[over.df$numerator == 2 ] <- 1
+```
+
+```{r}
+hist(over.df$numerator)
+```
+
+```{r}
+#explore numerator > 1
+#over.df[over.df$numerator > 1,]
+```
+
+
+```{r}
+#explore numerator > 1
+#over.df[over.df$numerator > 0 & over.df$numerator < 1 ,]
+```
+
+
+```{r}
+over.df$ci_measure_cat <- as.factor(over.df$ci_measure_cat)
+levels(over.df$ci_measure_cat)
+```
+
+
+
+```{r echo = T, results = 'hide'}
+#for regression purpose, remove all the NYU measures
+over.df <- over.df[over.df$ci_measure_cat != "NYU",]
+summary(over.df)
+```
+
+```{r}
+#change the numerator to factor 0 and 1
+over.df$numerator <- as.factor(over.df$numerator)
+levels(over.df$numerator)
+summary(over.df$numerator)
+```
+
+
+```{r}
+#change the ndi to numeric
+over.df$adi_natrank <- as.numeric(over.df$adi_natrank)
+summary(over.df$adi_natrank)
+```
+
+```{r}
+#change the ndi to numeric
+over.df$adi_staternk <- as.numeric(over.df$adi_staternk)
+summary(over.df$adi_staternk)
+```
+
+```{r}
+#change the predicted_race to factor
+over.df$predicted_race <- as.factor(over.df$predicted_race)
+summary(over.df$predicted_race)
+```
+
+```{r}
+#change the gender to factor
+over.df$gender <- as.factor(over.df$gender)
+summary(over.df$gender)
+```
+
+```{r}
+over.df$over.underuse <- as.factor(over.df$over.underuse )
+summary(over.df$over.underuse)
+```
+
+```{r}
+over.df$ebm_measure_label <- as.factor(over.df$ebm_measure_label)
+summary(over.df$ebm_measure_label)
+```
+
+
+```{r}
+#relevel: change the reference level for predicted_race to white
+over.df <- within(over.df, predicted_race <- relevel(predicted_race, ref = 6))
+```
+
+
+
+
+```{r}
+#rescale variable age and ndi - scale at center
+#if scale=TRUE, x - mean(x) / sd(x)
+over.df[,"age"] <- scale(over.df[,"age"])
+over.df[,"adi_natrank"] <- scale(over.df[,"adi_natrank"])
+```
+
+
+```{r}
+hist(over.df$age)
+```
+
+
+```{r}
+hist(over.df$adi_natrank)
+```
+
+
+### EDA 
+Here are the variables we are interested: 
+predicted_race
+gender
+age 
+adi_natrank
+
+#### preicted_race
+```{r}
+ggplot(data = over.df) +
+  geom_bar(mapping = aes(x = predicted_race))
+```
+
+```{r}
+summary(over.df$predicted_race)
+```
+
+
+```{r}
+ggplot(data = over.df) +
+  geom_bar(mapping = aes(x = predicted_race, fill = numerator))
+```
+
+```{r}
+prop.table(table(over.df$numerator, over.df$predicted_race),1)
+```
+
+
+```{r}
+prop.table(table(over.df$predicted_race,over.df$numerator),1)
+```
+
+
+#### gender
+
+```{r}
+summary(over.df$gender)
+```
+
+```{r}
+ggplot(data = over.df) +
+  geom_bar(mapping = aes(x = gender, fill = numerator))
+```
+
+
+```{r}
+prop.table(table(over.df$numerator, over.df$gender),1)
+```
+
+#### age
+
+```{r}
+ggplot(data=over.df, aes(x = age)) + 
+  geom_histogram()
+```
+
+```{r}
+# number of NAs 
+sum(is.na(over.df$age))
+```
+
+
+
+```{r}
+ggplot(data=over.df, aes(x = numerator, y = age)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data=over.df, aes(x = numerator, y = age)) + 
+  geom_violin()
+```
+
+```{r}
+age_summary <- over.df %>%
+  group_by(numerator) %>%
+  summarize(n = n(),
+         mean = mean(age,na.rm=TRUE),
+         sd = sd(age,na.rm=TRUE) 
+         )
+age_summary
+```
+
+```{r}
+ggplot(data = over.df, aes(x =age, y = as.numeric(numerator) )) + 
+  geom_point() +
+  geom_jitter()
+```
+
+
+
+#### ndi
+
+```{r}
+ggplot(data=over.df, aes(x = adi_natrank)) + 
+  geom_histogram()
+```
+
+```{r}
+ggplot(data=over.df, aes(x = numerator, y = adi_natrank)) + 
+  geom_boxplot()
+```
+
+
+```{r}
+ggplot(data=over.df, aes(x = numerator, y = adi_natrank)) + 
+  geom_violin()
+```
+
+
+```{r}
+ndi_summary <- over.df %>%
+  group_by(numerator) %>%
+  summarize(n = n(),
+         mean = mean(adi_natrank,na.rm=TRUE),
+         median = median(adi_natrank,na.rm=TRUE),
+         sd = sd(adi_natrank,na.rm=TRUE) 
+         )
+ndi_summary
+```
+
+```{r}
+ggplot(data = over.df, aes(x =adi_natrank, y =numerator)) + 
+  geom_point() + 
+  geom_jitter()
+```
+
+
+
+#### race vs. ndi vs numerator
+
+```{r}
+ggplot(over.df, aes(x = predicted_race, y = adi_natrank)) + 
+  geom_boxplot()
+
+```
+
+```{r}
+ggplot(over.df, aes(x = predicted_race, y = adi_natrank, color = numerator)) + 
+  geom_boxplot()
+
+```
+
+```{r}
+ggplot(over.df, aes(x = age, y = adi_natrank, color = predicted_race)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm')
+
+```
+
+
+
+
+
+### regression
+Code and resources from Julian Faraway (2016): Extending the Linear Model with R
+
+note from the data, each observation (row) might not be independent to each other. It is possible that one member has different meausres. Thus we should consider mised effect model with lmer(), actually glmer() that can account for the repeated measures -- all the obs are not independent. 
+
+try glm:
+```{r}
+#note this model assumes all obs are independent
+m0.glm <- glm(numerator ~ predicted_race + gender + age + adi_natrank,
+                family = "binomial",
+                data = over.df)
+summary(m0.glm)
+
+```
+
+#### method 1 - PQL (penalized quasi likelihood)
+```{r}
+m0.pql <- glmmPQL(numerator ~ predicted_race + gender + age + adi_natrank,  
+                random=list(member_number = ~1, ebm_measure_label = ~1),
+                family = "binomial",
+                data = over.df)
+summary(m0.pql)
+
+```
+According to Faraway(2016), this method is based on the linearized model and rather dubious assumptions explained in 10.2, and the binary response can lead to biased estimates of the coefficients. 
+
+
+#### method 2 - glmer
+```{r}
+#overall model
+m0.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(m0.glmer)
+```
+
+```{r}
+#this model does not include ndi. 
+m0.glmer.race <- glmer(numerator ~  predicted_race + 
+                         gender + 
+                         age + 
+                         (1|member_number) + 
+                         (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(m0.glmer.race)
+```
+
+```{r}
+#model exlude race
+m0.glmer.ndi <- glmer(numerator ~ 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(m0.glmer.ndi)
+```
+
+```{r}
+Anova(m0.glmer,type="II")
+```
+
+```{r}
+r.squaredGLMM(m0.glmer)
+```
+
+```{r}
+#diagnostic plots
+#plot(m0.glmer)
+```
+
+```{r}
+me1 <- ggpredict(m0.glmer, "predicted_race")
+plot(me1)
+```
+```{r}
+me2 <- ggpredict(m0.glmer, "adi_natrank")
+plot(me2)
+```
+
+```{r}
+exp(coef(summary(m0.glmer))[ , "Estimate"])
+```
+
+#### method 3 - Bayesian MEMs
+```{r}
+m0.bayes <- bglmer(numerator ~  predicted_race + 
+                     gender + 
+                     age + 
+                     adi_natrank + 
+                     (1|member_number) + 
+                     (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control=glmerControl(optimizer = "bobyqa"))
+summary(m0.bayes)
+```
+
+
+
+
+### Test for significance of variables
+
+
+
+```{r}
+#lrMod1.pb <- mixed(numerator ~ predicted_race + gender + age + adi_natrank + (1|member_number) + (1|ebm_measure_label),
+#                data=over.df, 
+#                family="binomial", method='LRT', args_test=list(nsim=1000), 
+#                control=glmerControl(optimizer = "bobyqa"))
+
+#summary(lrMod1.pb)
+```
+#### test random effect
+```{r}
+m0.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age +
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df)
+
+m0.glmer.r <- glmer(numerator ~  predicted_race + 
+                      gender + 
+                      age + 
+                      adi_natrank + 
+                      (1|member_number),
+                family = binomial(link="logit"),
+                data = over.df)
+
+anova(m0.glmer, m0.glmer.r)
+```
+Thus, we should include the random effect term: (1|ebm_measure_label)
+
+
+control = glmerControl(tolPwrss=1e-3)
+control=glmerControl(optimizer = "bobyqa")
+#### test interactions
+```{r}
+# test the effect predicted_race:ndi
+m0.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control = glmerControl(tolPwrss=1e-3)
+                )
+
+m0.glmer.racendi <- glmer(numerator ~  predicted_race + 
+                            gender + 
+                            age + 
+                            adi_natrank + 
+                            predicted_race:adi_natrank + 
+                            (1|member_number) + 
+                            (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df,
+                control = glmerControl(tolPwrss=1e-3))
+
+
+anova(m0.glmer, m0.glmer.racendi)
+```
+ 
+```{r}
+summary(m0.glmer.racendi)
+```
+
+```{r}
+Anova(m0.glmer.racendi, type =  "II")
+```
+
+No need for the interaction: predicted_race:adi_natrank
+
+
+```{r}
+# test the effect gender:ndi
+m0.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age +
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df)
+
+m0.glmer.genderndi <- glmer(numerator ~  predicted_race + 
+                              gender + 
+                              age +
+                              adi_natrank + 
+                              gender:adi_natrank + 
+                              (1|member_number) + 
+                              (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df)
+
+
+anova(m0.glmer, m0.glmer.genderndi)
+```
+No need for the interaction: gender:adi_natrank
+
+
+
+
+```{r}
+# test the effect age:ndi
+m0.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age +  
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df)
+
+m0.glmer.agendi <- glmer(numerator ~  predicted_race + 
+                           gender + 
+                           age +
+                           adi_natrank + 
+                           age:adi_natrank + 
+                           (1|member_number) + 
+                           (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = over.df)
+
+
+anova(m0.glmer, m0.glmer.agendi)
+```
+the interaction age:ndi appears to be signicant, take a look at the summary output
+
+```{r}
+summary(m0.glmer.agendi)
+```
+
+
+Visualize age:ndi interaction
+
+```{r}
+ggplot(over.df, aes(x = age, y = adi_natrank, color = numerator)) + 
+  geom_point() + 
+  geom_smooth(method='lm',size=1.5)
+```
+
+
+
+
+### goodness-of-fit
+
+Test correlation between ndi and race
+```{r}
+model.lm <- lm(adi_natrank ~ predicted_race, data = over.df)
+summary(model.lm)
+
+```
+
+
+```{r}
+rsq <- summary(model.lm)$r.squared
+rsq
+
+```
+
+```{r}
+kruskal.test(adi_natrank ~ predicted_race, data = over.df)
+```
+
+```{r}
+r.squaredGLMM(m0.glmer)
+```
+
+```{r}
+summary(m0.glmer)$varcor
+```
+
+```{r}
+# entire model: fixed + random
+lrAcc(m0.glmer, 'numerator')
+```
+
+
+```{r}
+
+#baseline is the intercept only model and random effets
+baselineAcc(m0.glmer, 'numerator')
+```
+```{r}
+#fixed effects only
+lrAcc(m0.glmer, 'numerator', use.ranef=FALSE)
+```
+
+
+## Underuse EBM {.tabset .tabset-fade .tabset-pills}
+### Data cleaning
+```{r}
+under.df <- read.csv("C:/Users/leo.zhou/Desktop/Equity OKR/R/data/underuse_df.csv",
+                    na.strings=c("","NA"))
+nrow(under.df)
+```
+
+```{r}
+hist(under.df$numerator)
+```
+
+```{r}
+under.df$ci_measure_cat <- as.factor(under.df$ci_measure_cat)
+levels(under.df$ci_measure_cat)
+```
+
+
+
+
+```{r}
+#change the numerator to factor 0 and 1
+under.df$numerator <- as.factor(under.df$numerator)
+levels(under.df$numerator)
+summary(under.df$numerator)
+```
+
+
+```{r}
+under.df$denominator <- as.factor(under.df$denominator )
+summary(under.df$denominator)
+```
+
+```{r}
+#change the ndi to numeric
+under.df$adi_natrank <- as.numeric(under.df$adi_natrank)
+summary(under.df$adi_natrank)
+```
+
+
+```{r}
+#change the predicted_race to factor
+under.df$predicted_race <- as.factor(under.df$predicted_race)
+summary(under.df$predicted_race)
+```
+
+```{r}
+#change the gender to factor
+under.df$gender <- as.factor(under.df$gender)
+summary(under.df$gender)
+```
+
+```{r}
+under.df$over.underuse <- as.factor(under.df$over.underuse )
+summary(under.df$over.underuse)
+```
+
+```{r}
+#relevel: change the reference level for predicted_race to white
+under.df <- within(under.df, predicted_race <- relevel(predicted_race, ref = 6))
+```
+
+
+
+```{r}
+#rescale variable age and ndi - scale at center
+#if scale=TRUE, x - mean(x) / sd(x)
+under.df[,"age"] <- scale(under.df[,"age"])
+under.df[,"adi_natrank"] <- scale(under.df[,"adi_natrank"])
+```
+
+
+```{r}
+hist(under.df$age)
+hist(under.df$adi_natrank)
+```
+
+
+
+
+
+
+### EDA 
+#### predicted_race 
+```{r}
+ggplot(data = under.df) +
+  geom_bar(mapping = aes(x = predicted_race))
+```
+
+```{r}
+summary(under.df$predicted_race)
+```
+
+
+```{r}
+ggplot(data = under.df) +
+  geom_bar(mapping = aes(x = predicted_race, fill = numerator))
+```
+
+```{r}
+prop.table(table(under.df$numerator, under.df$predicted_race),1)
+```
+
+
+```{r}
+prop.table(table(under.df$predicted_race,under.df$numerator),1)
+```
+
+
+
+
+#### gender 
+```{r}
+summary(under.df$gender)
+```
+
+```{r}
+ggplot(data = under.df) +
+  geom_bar(mapping = aes(x = gender, fill = numerator))
+```
+
+
+```{r}
+prop.table(table(under.df$numerator, under.df$gender),1)
+```
+
+
+
+#### age 
+```{r}
+ggplot(data=under.df, aes(x = age)) + 
+  geom_histogram()
+```
+
+```{r}
+# number of NAs 
+sum(is.na(under.df$age))
+```
+
+
+
+```{r}
+ggplot(data=under.df, aes(x = numerator, y = age)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data=under.df, aes(x = numerator, y = age)) + 
+  geom_violin()
+```
+
+```{r}
+age_summary <- under.df %>%
+  group_by(numerator) %>%
+  summarize(n = n(),
+         mean = mean(age,na.rm=TRUE),
+         median = median(age,na.rm=TRUE),
+         sd = sd(age,na.rm=TRUE) 
+         )
+age_summary
+```
+
+```{r}
+ggplot(data = under.df, aes(x =age, y = as.numeric(numerator) )) + 
+  geom_point() + 
+  geom_jitter()
+```
+
+#### ndi 
+```{r}
+ggplot(data=under.df, aes(x = adi_natrank)) + 
+  geom_histogram()
+```
+
+```{r}
+ggplot(data=under.df, aes(x = numerator, y = adi_natrank)) + 
+  geom_boxplot()
+```
+
+
+```{r}
+ggplot(data=under.df, aes(x = numerator, y = adi_natrank)) + 
+  geom_violin()
+```
+
+
+```{r}
+ndi_summary <- under.df %>%
+  group_by(numerator) %>%
+  summarize(n = n(),
+         mean = mean(adi_natrank,na.rm=TRUE),
+         median = median(adi_natrank,na.rm=TRUE),
+         sd = sd(adi_natrank,na.rm=TRUE) 
+         )
+ndi_summary
+```
+
+```{r}
+ggplot(data = under.df, aes(x =adi_natrank, y =numerator)) + 
+  geom_point() + 
+  geom_jitter()
+```
+
+### regression
+
+#### method 1 - PQL (penalized quasi likelihood)
+```{r}
+mU.pql <- glmmPQL(numerator ~ predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank,  
+                random=list(member_number = ~1, ebm_measure_label = ~1),
+                family = "binomial",
+                data = under.df)
+summary(mU.pql)
+
+```
+
+
+
+#### method 2 - glmer
+```{r}
+mU.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df,
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(mU.glmer)
+```
+```{r}
+Anova(mU.glmer,type="II")
+```
+
+
+```{r}
+r.squaredGLMM(mU.glmer)
+```
+
+
+```{r}
+me2 <- ggpredict(mU.glmer, "predicted_race")
+plot(me2)
+```
+
+```{r}
+me2 <- ggpredict(mU.glmer, "adi_natrank")
+plot(me2)
+```
+
+
+```{r}
+exp(coef(summary(mU.glmer))[ , "Estimate"])
+```
+
+
+
+
+#### method 3 - Bayesian MEMs
+```{r}
+mU.bayes <- bglmer(numerator ~  predicted_race + 
+                     gender + 
+                     age + 
+                     adi_natrank + 
+                     (1|member_number) + 
+                     (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df,
+                control=glmerControl(optimizer = "bobyqa"))
+summary(mU.bayes)
+```
+
+
+### Test for significance of variables
+
+#### test random effect
+```{r}
+mU.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+mU.glmer.r <- glmer(numerator ~  predicted_race + 
+                      gender + 
+                      age + 
+                      adi_natrank + 
+                      (1|member_number),
+                family = binomial(link="logit"),
+                data = under.df)
+
+anova(mU.glmer, mU.glmer.r)
+```
+Thus, we should include the random effect term: (1|ebm_measure_label)
+
+
+#### test interactions
+```{r}
+# test the effect predicted_race:ndi
+mU.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+mU.glmer.racendi <- glmer(numerator ~  predicted_race + 
+                            gender + 
+                            age + 
+                            adi_natrank + 
+                            predicted_race:adi_natrank + 
+                            (1|member_number) + 
+                            (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df,
+                control = glmerControl(tolPwrss=1e-3))
+
+
+anova(mU.glmer, mU.glmer.racendi)
+```
+No need for the interaction: predicted_race:adi_natrank
+
+
+```{r}
+# test the effect gender:ndi
+mU.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+mU.glmer.genderndi <- glmer(numerator ~  predicted_race + 
+                              gender + 
+                              age +
+                              adi_natrank + 
+                              gender:adi_natrank + 
+                              (1|member_number) + 
+                              (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+
+anova(mU.glmer, mU.glmer.genderndi)
+```
+No need for the interaction: gender:adi_natrank for the underuse model 
+
+
+
+
+```{r}
+# test the effect age:ndi
+mU.glmer <- glmer(numerator ~  predicted_race + 
+                    gender + 
+                    age + 
+                    adi_natrank + 
+                    (1|member_number) + 
+                    (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+mU.glmer.agendi <- glmer(numerator ~  predicted_race + 
+                           gender + 
+                           age +
+                           adi_natrank + 
+                           age:adi_natrank + 
+                           (1|member_number) + 
+                           (1|ebm_measure_label),
+                family = binomial(link="logit"),
+                data = under.df)
+
+
+anova(mU.glmer, mU.glmer.agendi)
+```
+for the underuse model, interaction age:ndi does not appear to be significant. 
+
+
+
+### goodness-of-fit
+
+
+Test correlation between ndi and race
+```{r}
+model.lm.U <- lm(adi_natrank ~ predicted_race, data = under.df)
+summary(model.lm.U)
+
+```
+
+
+```{r}
+rsqU <- summary(model.lm.U)$r.squared
+rsqU
+
+```
+
+```{r}
+kruskal.test(adi_natrank ~ predicted_race, data = under.df)
+```
+
+
+```{r}
+r.squaredGLMM(mU.glmer)
+```
+Marginal R2 provides
+the variance explained only by fixed effects and conditional R2 provides the variance
+explained by the entire model, i.e., both fixed effects and random effects
+```{r}
+summary(mU.glmer)$varcor
+```
+
+```{r}
+#fixed + random
+lrAcc(mU.glmer, 'numerator')
+```
+
+
+```{r}
+#baseline is the intercept only model: intercept + random
+baselineAcc(mU.glmer, 'numerator')
+```
+
+```{r}
+#fix effects only
+lrAcc(m0.glmer, 'numerator', use.ranef=FALSE)
+```
+
+
+```{r}
+r.squaredGLMM(mU.bayes)
+
+```
+
+```{r}
+lrAcc(mU.bayes, 'numerator')
+baselineAcc(mU.bayes, 'numerator')
+lrAcc(m0.bayes, 'numerator', use.ranef=FALSE)
+```
+
+
+
+
+
+
+
+
+
+## Resources and citations: {.tabset .tabset-fade .tabset-pills}
+Julian Faraway (2016): Extending the Linear Models with R
+
+https://www.ssc.wisc.edu/sscc/pubs/MM/MM_DiagInfer.html
+
+
+http://people.linguistics.mcgill.ca/~morgan/book/mixed-effects-logistic-regression.html#ref-Chung2013likelihood
+
+
+
+
+Marginal R2 provides the variance explained only by fixed effects
+Conditional R2 provides the variance explained by the entire model, i.e., both fixed effects and random effects. Citation: 
+Nakagawa, S., Schielzeth, H. (2013) A general and simple method for obtaining R<U+00B2> from Generalized Linear Mixed-effects Models. Methods in Ecology and Evolution 4: 133<U+2013>142
+
+

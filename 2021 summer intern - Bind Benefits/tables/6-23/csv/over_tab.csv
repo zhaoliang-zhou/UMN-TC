@@ -1,0 +1,91 @@
+ebm_measure_label,White,Black,Hispanic,API,AIAN,2prace,,
+AAB_2020C - Avoidance of Antibiotic Treatment for Acute Bronchitis/Bronchiolitis (Total),"0.56
+(208)","0.69
+(16)","0.44
+(27)","0.75
+(8)","NA
+(0)","NA
+(0)",,Each cell is calculated as: sum_numerator/sum_denominator
+APC_TOTAL_2019 - Use of Multiple Concurrent Antipsychotics in Children and Adolescents (Total),"0
+(34)","0
+(3)",0,"NA
+(0)","NA
+(0)","NA
+(0)",,
+CWP_2020C - Appropriate Testing for Pharyngitis (Total),"0.73
+(630)","0.47
+(34)","0.53
+(64)","0.65
+(23)","NA
+(0)","NA
+(0)",,(): sum of the denominator for the specific measure for specific race
+HDO_2020 - Use of Opioids at High Dosage,"0.026
+(307)","0
+(44)","0.048
+(21)","0
+(1)","0
+(1)","NA
+(0)",,
+"IQI_21_TOTAL_2017 - Cesarean Delivery Rate, Uncomplicated (Overall)","0.27
+(599)","0.37
+(63)","0.26
+(54)","0.33
+(61)","1
+(1)","0
+(1)",,
+"IQI_34_TOTAL_2017 - Vaginal Birth After Cesarean (VBAC) Rate, All (Overall)","0.12
+(136)","0.23
+(13)","0.1
+(10)","0.077
+(13)","0
+(1)","NA
+(0)",,
+LBP_2020C - Use of Imaging Studies for Low Back Pain,"0.77
+(348)","0.76
+(41)","0.61
+(31)","0.88
+(17)","1
+(1)","NA
+(0)",,
+"NYU_EM_PCT_2016 - NYU ED Utilization Algorithm: Emergent, Primary Care Treatable","0.19
+(4099)","0.221
+(700)","0.19
+(631)","0.17
+(158)","0.06
+(10)","0.33
+(2)",,
+NYU_NON_EM_2016 - NYU ED Utilization Algorithm: Non-Emergent,"0.16
+(4099)","0.21
+(700)","0.17
+(631)","0.14
+(158)","0.078
+(10)","0
+(2)",,
+UOP_NUM1_2020 - Use of Opioids from Multiple Providers (Multiple Prescribers),"0.15
+(358)","0.13
+(53)","0.125
+(24)","0
+(1)","0.5
+(2)","NA
+(0)",,
+UOP_NUM2_2020 - Use of Opioids from Multiple Providers (Multiple Pharmacies),"0.036
+(358)","0 
+(53)","0
+(24)","0
+(1)","0
+(2)","NA
+(0)",,
+UOP_NUM3_2020 - Use of Opioids from Multiple Providers (Multiple Prescribers and Multiple Pharmacies),"0.017
+(358)","0
+(53)","0
+(24)","0
+(1)","0
+(2)","NA
+(0)",,
+URI_2020C - Appropriate Treatment for Upper Respiratory Infection,"0.89
+(967)","0.84
+(73)","0.81
+(101)","0.89
+(71)","NA
+(0)","1
+(1)",,
