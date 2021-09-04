@@ -1,0 +1,236 @@
+---
+title: "EDA-zhou"
+output: html_document
+---
+
+EDA for the train dataset 
+
+
+
+
+```{r}
+#load library
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(ggcorrplot)
+library(GGally)
+library(FSA)
+```
+
+
+```{r}
+#load dataset
+train <- read.csv("C:\\Users\\leonz\\Desktop\\project\\InsNova_train.csv")
+
+train.df <- train
+```
+
+
+
+#Overall data structure
+```{r}
+head(train.df)
+```
+
+```{r}
+summary(train.df)
+```
+check NAs
+```{r}
+sum(is.na(train.df))
+```
+no NAs in this dataset
+
+#convert all chatracter variables to factor
+```{r}
+train.df[sapply(train.df, is.character)] <- lapply(train[sapply(train.df, is.character)], 
+                                       as.factor)
+
+```
+
+```{r}
+summary(train.df)
+
+```
+
+
+numeric variabbles: 
+veh_value 
+exposure  
+veh_age
+dr_age
+
+
+facttor variables: 
+veh_body 
+gender
+area  
+
+#Numerica variable EDA
+##veh_value 
+```{r}
+hist(train.df$veh_value)
+```
+
+```{r}
+summary(train.df$veh_value)
+```
+```{r}
+boxplot(train.df$veh_value)
+```
+```{r}
+plot(claim_cost ~ veh_value, data = train.df)
+```
+##exposure
+
+```{r}
+hist(train.df$exposure)
+```
+
+```{r}
+summary(train.df$exposure)
+```
+```{r}
+boxplot(train.df$exposure)
+```
+```{r}
+plot(claim_cost ~ exposure, data = train.df)
+```
+
+##veh_age
+```{r}
+hist(train.df$veh_age)
+```
+```{r}
+summary(as.factor(train.df$veh_age))
+
+```
+
+```{r}
+plot(claim_cost ~ veh_age, data = train.df)
+```
+
+```{r}
+boxplot(claim_cost ~ as.factor(veh_age), data = train.df)
+```
+```{r}
+Summarize(claim_cost ~ as.factor(veh_age),
+          data=train.df)
+```
+
+
+
+##dr_age
+```{r}
+hist(train.df$dr_age)
+```
+
+```{r}
+summary(as.factor(train.df$dr_age))
+
+```
+```{r}
+boxplot(claim_cost ~ as.factor(dr_age), data = train.df)
+```
+
+
+```{r}
+Summarize(claim_cost ~ as.factor(dr_age),
+          data=train.df)
+```
+
+
+##claim_cost
+```{r}
+hist(train.df$claim_cost)
+```
+number of 0s
+```{r}
+sum(train.df$claim_cost==0)
+```
+non 0s
+```{r}
+sum(train.df$claim_cost!=0)
+```
+
+```{r}
+cost_sub <- subset(train.df, claim_cost!=0)
+```
+
+```{r}
+hist(cost_sub$claim_cost)
+```
+```{r}
+summary(cost_sub$claim_cost)
+```
+
+##correlational plot between numerical variables
+
+```{r}
+num_sub <- train.df[, c("veh_value", "exposure", "veh_age", "dr_age","claim_cost")]
+
+```
+
+
+
+```{r}
+cor(num_sub)
+```
+```{r}
+corr <- round(cor(num_sub), 0.00001)
+ggcorrplot(corr)
+```
+
+
+#Categorical variable 
+
+##veh_body
+```{r}
+summary(train.df$veh_body)
+```
+```{r}
+Summarize(claim_cost ~ veh_body,
+          data=train.df)
+```
+
+
+
+```{r}
+boxplot(claim_cost ~ veh_body,
+          data=train.df)
+```
+
+
+##gender 
+
+```{r}
+summary(train.df$gender)
+```
+
+```{r}
+Summarize(claim_cost ~ gender,
+          data=train.df)
+
+```
+
+```{r}
+boxplot(claim_cost ~ gender,
+          data=train.df)
+```
+
+##area
+```{r}
+summary(train.df$area)
+```
+
+```{r}
+Summarize(claim_cost ~ area,
+          data=train.df)
+
+```
+
+```{r}
+boxplot(claim_cost ~ area,
+          data=train.df)
+```

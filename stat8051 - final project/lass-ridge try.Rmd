@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+library(pscl)
+library(caret)
+library(dplyr)
+library(acid)
+library(ineq)
+library(reldist)
+library(pROC)
+
+```
+
+```{r}
+train <- read.csv("C:\\Users\\leonz\\Desktop\\project\\InsNova_train.csv")
+
+df <- train
+```
+
+```{r}
+df[sapply(df, is.character)] <- lapply(df[sapply(df, is.character)], 
+                                       as.factor)
+```
+
+```{r}
+#split the datainto train and test combo
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(df))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(df)), size = smp_size)
+
+train <- df[train_ind, ]
+test <- df[-train_ind, ]
+
+```
+
+
+```{r}
+#Lasso
+set.seed(825)
+lambda <- 10^seq(-3, 3, length = 100)
+
+fit_control <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+lasso_fit <- train(claim_cost ~ .-id-claim_ind-claim_count, 
+                data = train, 
+                method = "glmnet",
+                trControl = fit_control,
+                tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+```
+
+
+```{r}
+coef(lasso_fit$finalModel, lasso_fit$bestTune$lambda)
+```
+```{r}
+lasso_fit$bestTune
+```
+
+```{r}
+#make predictions
+preds<- lasso_fit %>% predict(test)
+```
+
+
+```{r}
+data.frame(
+  RMSE = RMSE(preds, test$claim_cost),
+  Rsquare = R2(preds, test$claim_cost)
+)
+```
+
+
+```{r}
+roc(test$claim_cost, preds, plot=TRUE)
+```
+
+
+```{r}
+2*0.78-1
+```
+
+
+#elastic net
+```{r}
+fit_control <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+elnet.fit <- train(claim_cost ~ .-id-claim_ind-claim_count,
+  data = train,
+  method = "glmnet",
+  trControl = fit_control
+)
+
+```
+
+
+```{r}
+coef(elnet.fit$finalModel, elnet.fit$bestTune$lambda)
+```
+
+
+```{r}
+elnet.fit$bestTune
+```

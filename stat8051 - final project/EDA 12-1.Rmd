@@ -1,0 +1,293 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(statmod)
+library(ggpubr)
+library(ggplot2)
+```
+
+```{r}
+train <- read.csv("C:\\Users\\leonz\\Desktop\\project\\InsNova_train.csv")
+
+df <- train
+```
+
+```{r}
+df[sapply(df, is.character)] <- lapply(df[sapply(df, is.character)], 
+                                       as.factor)
+```
+
+```{r}
+df$pure_premium <- df$claim_cost / df$exposure
+df <- df %>% mutate(avg_cost = ifelse(df$claim_count==0, 0, df$claim_cost/df$claim_count))
+df$frequency <- df$claim_count/df$exposure
+
+```
+
+
+
+```{r}
+hist(df$pure_premium)
+hist(df$avg_cost)
+hist(df$frequency)
+```
+
+
+
+
+```{r}
+fit0 <- glm(pure_premium ~ veh_value + veh_body + veh_age + gender + area + dr_age , family=tweedie(var.power=1.5, link.power=0), data=df)
+summary(fit0)
+
+```
+
+
+
+
+#model comparison when dr_age and veh_age are factors
+
+```{r}
+fit1 <- glm(pure_premium ~ veh_value + veh_body + factor(veh_age) + gender + area + factor(dr_age) , family=tweedie(var.power=1.5, link.power=0), data=df)
+summary(fit1)
+
+
+```
+
+
+
+
+```{r}
+anova(fit0, fit1, test = "F")
+
+```
+In conclusion convert dr_age and veh_age to factors do not improve model by F test. 
+
+
+#test for interactions
+```{r}
+fit2 <- glm(pure_premium ~ veh_value + veh_age+ gender*dr_age+ area  + veh_body    , family=tweedie(var.power=1.5, link.power=0), data=df)
+summary(fit2)
+
+```
+
+```{r}
+anova(fit0, fit2, test="F")
+```
+
+
+
+```{r}
+fit3 <- glm(pure_premium ~ veh_value*area + veh_age+ gender*area + dr_age  + veh_body    , family=tweedie(var.power=1.5, link.power=0), data=df)
+summary(fit3)
+
+```
+
+
+```{r}
+anova(fit0, fit3, test="F")
+```
+
+#plots for presentation
+
+
+##pure_premium 
+
+```{r}
+a<- ggplot(df, aes(x=pure_premium)) + 
+  geom_histogram(color="black", fill="white")
+a
+
+```
+
+```{r}
+summary(df$pure_premium)
+var(df$pure_premium)
+sum(df$pure_premium==0)
+```
+
+```{r}
+premium_sub <- subset(df, pure_premium!=0)
+a <- ggplot(premium_sub, aes(x=pure_premium)) + 
+  geom_histogram(color="black", fill="white")
+
+
+
+```
+
+
+##avg_cost
+```{r}
+b <- ggplot(df, aes(x=avg_cost)) + 
+  geom_histogram(color="black", fill="white")
+b
+
+```
+
+```{r}
+#summary statistics 
+summary(df$avg_cost)
+var(df$avg_cost)
+sum(df$avg_cost==0)
+
+
+```
+
+
+##frequency
+
+
+```{r}
+c <- ggplot(df, aes(x=frequency)) + 
+  geom_histogram(color="black", fill="white")
+c
+```
+
+```{r}
+#summary statistics 
+summary(df$frequency)
+var(df$frequency)
+sum(df$frequency==0)
+
+
+```
+
+
+
+
+
+
+##correlation among numerical variables
+
+```{r}
+num_sub <- df[, c("veh_value", "exposure", "veh_age", "dr_age")]
+
+
+```
+
+
+
+
+
+
+```{r}
+cor(num_sub)
+
+```
+
+```{r}
+corr <- round(cor(num_sub), 0.00001)
+ggcorrplot(corr)
+
+```
+```{r}
+library(GGally)
+
+ggpairs(num_sub)
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+```{r}
+figure <- ggarrange(a, b, c,
+                    ncol = 3, nrow = 1)
+figure
+```
+
+
+```{r}
+#for pure premium
+pred.df <- data.frame( Feature = c("young driver expensive vehicle", "young male", "vehicle value", "area", "young male old car"),Importance=c(0.084957,0.068966,0.066395, 0.052207, 0.050391))
+p1<-ggplot(data=pred.df, aes(x=reorder(Feature, Importance), y=Importance)) +
+  geom_bar(stat="identity") + 
+  coord_flip() + 
+  xlab("Features")
+
+p1
+```
+
+
+
+```{r}
+#severity
+sev.df <- data.frame( Feature = c("young male","young driver expensive vehicle","vehicle value", "heavy vehicle", "area"),Importance=c(0.080033,0.065353,0.063574,0.059892,0.054457))
+p2<-ggplot(data=sev.df, aes(x=reorder(Feature, Importance), y=Importance)) +
+  geom_bar(stat="identity") + 
+  coord_flip() + 
+  xlab("Features")
+
+p2
+
+
+```
+
+
+
+```{r}
+p3<-ggplot(df, aes(x=dr_age, y=avg_cost, fill=gender)) +
+  geom_bar(stat="identity", position=position_dodge())+theme_minimal() + 
+  xlab("Drivers' age") + 
+  ylab("Severity (average cost)")
+p3
+
+```
+
+
+
+```{r}
+p4 <- ggplot(data=df, aes(x=reorder(area, avg_cost), y = avg_cost)) + 
+  geom_bar(stat="identity") + 
+  xlab("Area") + 
+  ylab("Severity (average cost)") 
+p4
+```
+
+
+
+
+
+
+
+```{r}
+df$claim_cost1000 <- df$claim_cost / 1000
+
+```
+
+
+
+```{r}
+ggplot(df, aes(x=claim_cost1000)) + 
+    geom_histogram(color="black", fill="white") +
+    coord_cartesian(xlim = c(0, 50), ylim=c(0,2500)) + 
+    xlab("Total Insurannce Cost (in $1000) Per Policy Year")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
