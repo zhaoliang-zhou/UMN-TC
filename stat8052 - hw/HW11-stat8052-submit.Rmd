@@ -1,0 +1,995 @@
+---
+title: "HW11-stat8052"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(conf.design)
+library(faraway)
+library(multcomp)
+library(nlme)
+library(lme4)
+library(pbkrtest)
+library(broom.mixed)
+library(mgcv)
+library(lmerTest)
+library(RLRsim)
+library(FSA)
+library(gmodels)
+```
+
+
+
+# 1: Oxboys
+
+```{r}
+data(Oxboys)
+
+ox.df <- Oxboys
+
+ox <- groupedData(height ~ age|Subject, 
+                  data = as.data.frame(ox.df))
+```
+
+
+## (a)
+Use a model for the data that includes a reasonable fixed effects model, subject-specific intercept, and Λ=σ2I, the R default for the within-boy error (iε) correlation structure. Estimate the variance components, and provide confidence intervals for the variance components. Use R.
+
+
+
+
+First, fit a model with subject-spcific intrcept
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+mod.a<- lme(height ~ age, data=ox,
+             random = ~1|Subject)
+anova(mod.a)
+```
+
+
+```{r}
+summary(mod.a)
+```
+For the model fitted above, the only fixed effect is age which means this model assumed same slope for each subject. For each subject, the intercept is different.
+
+
+Next, estimate the variance components: 
+```{r}
+getVarCov(mod.a, type="random.effects")
+```
+```{r}
+summary(mod.a)
+```
+
+
+
+```{r}
+intervals(mod.a)
+```
+From the summary output above, we can see that the estimated $\hat{\sigma}=1.31$ with 95% CI (1.19. 1.44)
+
+
+## (b)
+
+Use a model for the data that includes a subject-specific intercept and a subject-specific slope for age, and an AR(1) matrix for Λ. Estimate V, D, Λ and σ.
+
+First, fit a model that includes subject specific intercept and slope with AR(1): 
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+ctrl <- lmeControl(opt='optim')
+mod.b <- lme(height ~ age, data=ox,
+             random = ~age|Subject, 
+             correlation = corAR1(),
+             control = ctrl)
+
+anova(mod.b)
+```
+
+Then, we can investigate the AR(1) correlation structure:
+```{r}
+extract.lme.cov2(mod.b, data=ox)$V[[1]]
+```
+
+
+
+
+First, find $\sigma^2 V$: 
+```{r}
+getVarCov(mod.b, type = "marginal")
+```
+
+
+
+
+
+
+Estimate $\sigma^2 D$
+```{r}
+getVarCov(mod.b, type="random.effects")
+
+```
+
+
+
+
+
+
+
+
+
+Estimate $\sigma^2 \Lambda$
+
+```{r}
+getVarCov(mod.b, type="conditional")
+
+```
+$\Lambda = I_9$
+
+
+
+
+
+Find $\sigma$
+```{r}
+getVarCov(mod.b, type="conditional")
+
+```
+
+From the output above, we can see that $\sigma^2 = 12.592$, thus 
+$\sigma = \sqrt{12.592} = 3.54$
+
+
+
+## (c)
+
+
+Should age be included (1) with a subject-specific (random) slope? (2) with a subject-specific (random) slope and quadratic effect? Test using the LRT. For case (2), the fixed effects also should include a quadratic term in age. Why?
+
+
+
+
+
+
+Test for subject specific slope: 
+
+```{r}
+mod.c0 <- lme(height ~ age, data=ox,
+              random = ~age|Subject)
+
+mod.c1 <- lme(height ~ age, data=ox,
+              random = ~1|Subject)
+anova(mod.c1, mod.c0)
+```
+The above output is the LRT test result comparing a model with subjct-specific slope and model without subject-specific slope. From above we can see that the model with random slope (mod.c0) has lower AIC and BIC. Also, the LRT test statistic is 215.94 with corresponding p-value less that 0.05. Thus, with the significant p-value, AIC, and BIC, we would prefer to include subject-specific (random) slope. 
+
+
+
+
+Test for quadratic effect for age:
+```{r}
+mod.c2 <- lme(height ~ age, data=ox,
+              random = ~age|Subject,
+              method = "ML")
+mod.cQ <- lme(height ~ age + I(age^2), data=ox,
+              random = ~age+ I(age^2)|Subject,
+              method = "ML")
+
+anova(mod.c2, mod.cQ)
+```
+The ouput above shows LRT rest comparing a model including quadratic effect in age and a model without the quadratic effect. 
+From the output above, we see that the model with quadratic effect has both lower AIC and BIC. Also, the p-value is less than 0.0001 which is significant. All those suggest we should prefer the model which includes the quadratic age effect. 
+
+
+For case (2), the fixed effects also should include a quadratic term in age. This is because in LMM models, random effects are assumed to have 0 mean. IF the population mean is not 0, it should be estimated by the fixed effects fit, so that the model assumption of mean 0 random effects is fulfilled. Thus, when fitting a subject-specific quadratic polynomial, we should also include a quadratic fit in our fixed effects. 
+
+
+
+## (d)
+
+
+Test whether Λ should be the R default (independent errors), compound symmetry, or the AR1 structure. For help with correlation structures, check ?corClasses in R, nlme package.
+
+
+
+
+First, we can look at the correlation structrue for each case: 
+```{r}
+ctrl <- lmeControl(opt='optim')
+mod.dD <- lme(height ~ age, data=ox,
+              random = ~age|Subject)
+
+mod.dAR <- lme(height ~ age, data=ox,
+              random = ~age|Subject,
+              correlation = corAR1(),
+              control=ctrl)
+
+mod.dCS <- lme(height ~ age, data=ox,
+              random = ~age|Subject,
+              correlation = corCompSymm())
+
+
+
+
+```
+
+
+For default correlation: 
+```{r}
+getVarCov(mod.dD, type="conditional")
+```
+
+
+
+For compund symmetry:
+```{r}
+getVarCov(mod.dCS, type="conditional")
+```
+
+
+
+For AR(1):
+```{r}
+getVarCov(mod.dAR, type="conditional")
+```
+
+Because this study is a repeated measure, and the repeated measures are over age. However, the time age is not evenly spaced. Thus, AR(1) should not be considered. For the remaining two, we can use AIC and BIC to compare: 
+
+```{r}
+summary(mod.dD)$AIC
+```
+
+
+
+```{r}
+summary(mod.dCS)$AIC
+```
+
+```{r}
+summary(mod.dD)$BIC
+```
+
+
+
+```{r}
+summary(mod.dCS)$BIC
+```
+Default model has AIC = 736.091, BIC = 756.7714;
+Compond Symmtry model has AIC = 738.091, BIC = 762.2181.
+Thus, we can see that the R default model has both lower AIC and BIC. Thus, the R default model should be prefered. 
+
+
+
+Then, compare Default with AR(1)
+```{r}
+anova(mod.dD, mod.dAR)
+```
+Though, we see from the output above, AIC, BIC, and p-value all suggest that AR(1) model is preferable. As we discussed above, since our time variable age is not evenly spaced (does not have equal distance between measurement times), thus we should not use AR(1)
+
+
+
+```{r}
+anova(mod.dD, mod.dCS)
+```
+Same conclusion as above, AIC, BIC, and P-value all suggest using the R-default. 
+
+
+## (e)
+For your best fitting model, check the model assumptions: overall residual plot with plot(m.lme), normal probability plots for the residuals and random effects. In addition, provide a grid of residual plots, showing residuals vs. age for each subject. What do you conclude?
+
+
+From previous parts, the best model should include subject specific intercept and slope as well as a quadratic effect of age in both fixed and random effects. It is coded as below: 
+```{r}
+mod.e <- lme(height ~ age + I(age^2), data=ox,
+              random = ~age+ I(age^2)|Subject,
+              method = "ML")
+
+```
+
+
+
+Overall residuals plot: 
+```{r}
+plot(mod.e)
+```
+For the overall residual plot, we see that the residuals are evenly scattered around the 0 horizontal line, and we did no obverse any obvious patterns. 
+
+
+
+
+
+
+
+
+
+a grid of residual plots, showing residuals vs. age for each subject： 
+
+```{r}
+require(lattice)
+xyplot(resid(mod.e) ~ age|Subject, data=ox, layout=c(6,6),
+       panel = function(x,y){
+         panel.xyplot(x,y)
+         panel.lines(range(x), c(0,0))
+       })
+
+```
+From the plot above, we can see that for each subject, the residuals are evenly scattered around the 0 horizontal line, and no obvious patterns for the residuals for individuals. 
+
+
+
+
+
+
+normal probability plots for the residuals
+```{r}
+qqnorm(mod.e)
+
+```
+From the normal probability plot of the residuals, we can see there is no obviouse curvetures, and thus residuals are approximately normally distributed. 
+
+
+Normal prob plot for random effects: 
+```{r}
+qqnorm(mod.e, form = ~ranef(.),id=0.1)
+```
+Above is a grid plots showing the normal probability plot for the random effects. We can see for all 3 random effects, most of the points fall onto the diagnal line but with some curvature at the lower left tail. The normality for the random effects seem somewhat reasonable. 
+
+
+
+
+
+# 2: Oehlert P.13.5
+
+
+```{r}
+soy.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr13.5",header=TRUE)
+```
+
+
+
+```{r}
+soy.df$year.loc <- as.factor(soy.df$year.loc)
+soy.df$rotation <- as.factor(soy.df$rotation )
+soy.df$variety <- as.factor(soy.df$variety)
+```
+
+
+
+## (a)
+Here, we have Location-Year as blocks
+
+
+Analyze the data using lm( ): 
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit.a <- lm(y ~ year.loc + rotation*variety, data=soy.df)
+summary(fit.a)
+```
+
+
+check model assumption: 
+```{r}
+par(mfrow = c(2,2))
+plot(fit.a)
+```
+The residual plots do not show obvious patterns, and the Normal Q-Q plot do not show any curvetures or deviations. Thus, the model assumptions seem to meet. 
+
+
+
+
+```{r}
+anova(fit.a)
+```
+Above is the ANOVA output for the model using lm() which includes yar.loc as blocking variable, and interaction between rotation adn variety. From the ANOVA output above, we can see that besides year.lock (blocks), the only significant variable is rotation. 
+
+
+
+
+
+
+Then, we can fit a model with rotation only: 
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit.a1 <- lm(y ~ year.loc + rotation, data=soy.df)
+anova(fit.a1)
+```
+
+
+
+
+
+## (b)
+
+Analyze the data using lme( ) and lmer( ); blocks are random effects. Do you get different results?
+
+
+
+Using lme 
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit.b.lme <- lme(y ~ rotation*variety, data=soy.df,
+                 random = ~1|year.loc)
+anova(fit.b.lme)
+```
+
+
+
+
+Using lmer: 
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit.b.lmer <- lmer(y ~ rotation*variety + (1|year.loc), data=soy.df)
+anova(fit.b.lmer)
+```
+For the p-value from lmer, we could use Satterthwaite approximation: 
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit2.b.lmer <- lmerTest::lmer(y ~ rotation*variety + (1|year.loc), data=soy.df)
+anova(fit2.b.lmer)
+```
+From the ANOVA outputs above, we can see that lme and lmer produces identitical F-value for each variable. Both lme and lmer suggest that the variable rotation is significant with p-value 0.048 which is really close to the 0.05 boundary while the variety and interaction terms are not significant. 
+
+
+## (c)
+
+Test whether the within-block errors are correlated. To do this, use a compound symmetry structure for Λ.
+
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+fit.c.1 <- lme(y ~ rotation*variety, data=soy.df,
+                random = ~1|year.loc)
+
+
+fit.c.CS <- lme(y ~ rotation*variety, data=soy.df,
+                random = ~1|year.loc,
+                correlation = corCompSymm())
+
+anova(fit.c.1, fit.c.CS)
+```
+
+From the output above, we can see that AIC, BIC, and the p-value all suggest the model with R-default which assumed that the within subject errors are uncorrelated. Thus, we can conclude that the within block errors are uncorrelated.  
+
+
+
+
+
+## (d)
+Find $X_i$ matrix: 
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+soy1 <- soy.df[soy.df$year.loc==1,]
+model.matrix(y ~ rotation*variety, soy1)
+
+
+```
+
+
+
+
+
+Find $Z_i$ matrix
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+model.matrix(~ rotation*variety-1, soy1)
+```
+
+
+
+
+
+Find $D$ matrix:
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+getVarCov(fit.c.1, type="random.effects")
+```
+
+Thus, $D = 146.76/(12.114)^2 = 1$
+
+
+
+
+
+
+
+Find $\Lambda_i$
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+getVarCov(fit.c.1, type="conditional")
+```
+Thus, $\Lambda = I_8$
+
+
+
+
+
+
+
+
+## 3. Faraway P.234 problem 6
+
+```{r}
+library(faraway)
+data("breaking")
+break.df <- breaking
+```
+
+
+
+For this problem, because we are interested in suppliers, thus suppliers should be treated  as treatment. Day and operator should be treated as blocks
+
+
+
+
+## (a)
+Plot the data and interpret.
+
+```{r}
+ggplot(break.df, aes(x = day, y = y, color = operator, shape=supplier )) + 
+  geom_point()
+```
+
+Above is the plot of data colored by operator and shaped by supplier. For instance, we can see that, for supplier C, day 1 op2 has the highest y value. For operation 1, day 2 supplier C has the highest y value. From this plot, we can see there are some variations between days for operator and supplier. Then, we can check each of them individually:  
+
+
+```{r}
+ggplot(break.df, aes(x = supplier, y = y, )) + 
+  geom_boxplot()
+```
+Above is a boxplot of supplier vs. y. We can see that supplier C has the highst average response while supplier A has the lowest average response. We can also see supplier B has the least variable response. 
+
+
+
+
+```{r}
+ggplot(break.df, aes(x = operator, y = y, )) + 
+  geom_boxplot()
+```
+
+Then, we can look at the operator vs. y boxplot as above. We can see that the 4 operators have similar median response and the variability of response is somewhat similar as well. 
+
+```{r}
+ggplot(break.df, aes(x = day, y = y, )) + 
+  geom_boxplot()
+```
+
+Above is the boxplot of day vs. y. We can see that day 2 and day 3 are the most variable days in terms of response. 
+
+
+
+
+
+
+
+
+
+
+## (b)
+
+
+
+Fit a fixed effects model for the main effects. Determine which factors are
+significant.
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+b.lm <- lm(y ~ day + operator + supplier, data=break.df)
+anova(b.lm)
+```
+For the above model, we treated day and operator as blocking factors, and supplier as treatment. From above ANOVA output, we can see that the supplier has a significant p-value less than 0.05. At the same time, the blocking variable day and operator do not appear to be significant as they all have a p-value greater than 0.05. 
+
+
+## (c)
+
+Fit a mixed effects model with operators and days as random effects but the
+suppliers as fixed effects. Why is this a natural choice of fixed and random effects?
+Which supplier results in the highest breaking point? What is the nature
+of the variation between operators and days?
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+c.lmer <- lmer(y ~  supplier + (1|day) + (1|operator), data=break.df)
+anova(c.lmer)
+
+
+```
+Above is the model that fit supplier as a fix effect, and days and operators as random effects. This is a natural choice because we are interested in specific suppliers and their performance, and we are not interested in the population where the suppliers were chosen. Thus it is natural to treat suppliers as fixed effects. We treat operators and days as random because we are not interested in specific day or specific operator performance, thus randomly select day and operator and draw inference regarding the population behind is more reasonable choice.  
+
+
+```{r}
+summary(c.lmer)
+```
+From the summary output above, we can see supplier 3, or Supplier C has the highest average breaking point. For the nature of variations between days and operators, we do expect variations between different days and operators as we treated them as random effects. 
+
+
+
+
+
+
+
+## (d) 
+
+Test the operator and days effects.
+
+Test operator effects: 
+```{r}
+
+d1.lmer <- lmer(y ~  supplier + (1|day), data=break.df)
+
+d2.lmer <- lmer(y ~  supplier + (1|day) + (1|operator), data=break.df)
+
+anova(d1.lmer, d2.lmer)
+```
+From the anova output above, we can see that the model without opreator as a random effect has smaller AIC and BIC, adn the p-value confirms that the model without operator is preferable. 
+
+
+```{r}
+summary(d2.lmer)
+```
+From the summary output above, we can see that operator has estimated variance 0
+
+
+Test for days:
+```{r}
+
+d3.lmer <- lmer(y ~  supplier + (1|operator), data=break.df)
+
+d4.lmer <- lmer(y ~  supplier + (1|day) + (1|operator), data=break.df)
+
+anova(d3.lmer, d4.lmer)
+```
+From the model above, we can see that model without day variable has lower AIC and BIC, and the p-valu also confirms that the model without days factor is more preferable. 
+```{r}
+summary(d4.lmer)
+```
+From the summary output above, we can see that the day has estimated variance 219.1. 
+
+
+We can also use the RLRT in the Faraway textbook:
+test for day
+```{r}
+mmod <- lmer(y ~  supplier + (1|day) + (1|operator), data=break.df)
+
+mmodD <-  lmer(y ~  supplier + (1|day), data=break.df)
+mmodO <- lmer(y ~  supplier + (1|operator), data=break.df)
+
+
+exactRLRT(mmodD, mmod, mmodO)
+```
+From the output above, we see thatthe day variable is not significant.
+
+test for operator:
+```{r}
+exactRLRT(mmodO, mmod, mmodD)
+```
+From the output above, we see that the operator does not appear to be significant as well. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+## (e) 
+Test the significance of the supplier effect.
+
+
+Since the supplier is the fixed effect, we can use Kenwar-Roger adjustments in the pbkrtest package: 
+```{r}
+mmod.full <-  lmer(y ~  supplier + (1|day) + (1|operator), data=break.df, REML = F)
+  
+  
+nmod <- lmer(y ~  1+ (1|day) + (1|operator), data=break.df, REML = F)
+KRmodcomp(mmod.full, nmod)
+  
+```
+From the above output, we can see a significant p-value less than 0.05. Thus, we can conclude there is significant differences in materials. 
+
+
+
+
+
+
+
+
+## (f) 
+For the best choice of supplier, predict the proportion of components produced
+in the future that will have a breaking strength less than 1000.
+
+As from above analysis, suipplier C seems to be the best choice of supplier. 
+```{r, warning=FALSE,message=FALSE}
+
+mmod.e <- lmer(y ~  supplier + (1|day) + (1|operator), data=break.df)
+
+
+group.sd <- as.data.frame(VarCorr(mmod.e))$sdcor[1]
+resid.sd <- as.data.frame(VarCorr(mmod.e))$sdcor[2]
+pv <- numeric(1000)
+
+
+for (i in 1:1000){
+  y = unlist(simulate(mmod.e,))
+  bmod = refit(mmod.e, y)
+  pv[i] = predict(bmod, re.form=NA, newdata=data.frame(supplier="C"))+ rnorm(n=1,sd=resid.sd)
+}
+
+quantile(pv, c(0.025, 0.975))
+
+```
+Above is the 95% interval for the predicted values in 1000 simulations
+```{r}
+perc(pv,1000,"lt")
+```
+We can see that, there are 16.5% in the predicted breaking strength less than 1000. 
+
+
+
+
+
+
+
+
+
+# 4. Oehlert P16.8
+
+
+
+
+
+```{r}
+tr.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr16.8",header=TRUE)
+```
+
+
+
+```{r}
+tr.df$sign <- as.factor(tr.df$sign)
+tr.df$timing <- as.factor(tr.df$timing)
+tr.df$interchange <- as.factor(tr.df$interchange)
+```
+
+## (a)
+
+The usual: analyze the data and draw conclusions. What are the whole plot units, WP treatment; split-plot-unit, SP treatment? Use aov( ) to analyze the data.
+
+The WP treatment is the sign with 2 levels n and y; 
+The SP treatment is traffic lights with 3 levels of settings 0, 3, and 6. 
+
+
+
+```{r}
+m.a <- aov(speed ~  sign  + Error(interchange:sign)+
+           timing + timing:sign, data=tr.df)
+summary(m.a)
+```
+
+Above is the summary output for the aov fit model.
+For the WP analysis, we can see that sign has a p-value 0.101 which is not significant on 0.05 level. Thus, we can conclude there is no difference in speed between different signs. 
+
+For the SP analysis, we can se that the timing variable has a significant p-value less than 0.05. Thus, we can conclude the speed is differed by timing. In addition, there is no evidence suggesting sign and timing interaction (p=0.438). 
+
+
+
+
+## (b)
+Describe the data as a repeated measures design. Identify “groups” (well, we don’t have “subjects” here). What is the measure that is repeated within-group? Provide the lme() command to analyze the data. Are the results the same?
+
+
+The "group"s here is Interchanges, as each interchange is measured repeatly on consecutively 3 Tuesdays. The measure that is repeated within-group is timing as on each Tuesday, the timing will be different for 1 interchange. Thus, we could view interchange as "subject" here is it is measured repeatly in a equal time interval (1 week). 
+
+
+Use lme:
+
+```{r}
+model.b <- lme(speed ~ timing*sign, data=tr.df, 
+              random = ~1|interchange)
+
+anova(model.b)
+```
+
+From the anova output, we can see for timing, it has a p-value less than 0.0001 which is significant indicating the speed is differ by timing. However, there is no evidence suggesting speed differ by sign (p=0.1007), and there is no evidence suggesting an interaction effects between timing and sign. These results and conclusions are the same as part (a). 
+
+
+
+
+
+
+
+
+
+## (c)
+
+Provide simultaneous 95% confidence intervals for all pairwise comparisons between the three “Timing” levels.
+
+```{r}
+model.c <- lme(speed ~ timing*sign, data=tr.df, 
+              random = ~1|interchange)
+
+anova(model.c)
+```
+
+Timing 0 vs. Timing 3
+```{r}
+fit.contrast(model.c, varname = "timing", coeff=c(1,-1,0))
+```
+
+
+
+
+Timing 0 vs. Timing 6 
+```{r}
+fit.contrast(model.c, varname = "timing", coeff=c(1,0,-1))
+```
+
+
+
+
+Timing 3 vs. Timing 6
+```{r}
+fit.contrast(model.c, varname = "timing", coeff=c(0,1,-1))
+```
+
+
+
+
+
+## (d)
+
+
+
+Here we do not need Multi-level notation, and we can use notation as follow: 
+$$Y_i = X_i \beta + Z_i\gamma_i + \epsilon_i$$
+
+Where $X_i \beta$ describe the fixed effects, and $\beta$ is the WP level parameter, and $X_i$:
+
+```{r}
+matrix(c(1,1,1, 0, 3, 6), nrow = 3, ncol = 2)
+
+```
+
+and $Z_i\gamma_i$ is the random effects with $Z_i$:
+```{r}
+matrix(c(1,1,1), nrow = 3, ncol = 1)
+
+```
+And $\gamma \sim N(0, \sigma^2 D)$ IID and the within-group error $\epsilon \sim N(0, \sigma^2 \Lambda)$ IID, and then
+$WPE \sim N(0, \sigma^2_w)$ IID and $SPE \sim N(0, \sigma^2_s)$ IID
+
+
+
+Variance covariance: 
+
+```{r}
+VarCorr(model.c)
+```
+
+
+
+## (e)
+
+
+
+Estimate $\sigma^2D$
+
+```{r}
+getVarCov(model.c, type="random.effects")
+```
+
+
+Here we do not need Multi-level notation, and we can use notation as follow: 
+
+
+
+
+
+## 5. Oehlert P16.3 
+
+
+```{r}
+ir.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr16.3",header=TRUE)
+```
+
+
+
+```{r}
+ir.df$replicate <- as.factor(ir.df$replicate )
+
+ir.df$pesticide <- as.factor(ir.df$pesticide )
+
+ir.df$irigation <- as.factor(ir.df$irigation )
+
+ir.df$variety <- as.factor(ir.df$variety )
+
+
+```
+
+
+
+
+This is a split plot design. First, we have Rep, which can be viewed as blocks, and this is fixed. Then, we have Whole plot as Field with 3 levels (P1, P2, P3). Then, we have Split-plot irrigation with 2 levels (yes, no) and is nested in  sprayed pesticide (P). Then, we also have var nested in P with 2 levels (1,2). Note that Var and Irrig are crossed. 
+
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+M.lme <- lme(yield ~ pesticide*irigation*variety, data=ir.df,
+              random = ~1|replicate)
+summary(M.lme)
+```
+
+
+
+```{r}
+anova(M.lme)
+```
+
+For this problem, since we are interested in specific pesticide effect, irrigation effect, and variety effect, we would treat those as fixed effects. Since we do not interested in the specific replicate effect, we treat the replicate variable as random. From the anova output above, we can observe that the variable pesticide and irrigation appear to be significant with p-values all less than 0.05. For the variety effect, the p-value is 0.0534 which is at boundary, thus variety only shows moderate effect. However, all the interaction terms do not appear to be significant as they all have p-values greater than 0.05.  
+
+
+Standard error of the estimated difference in average yield: 
+
+
+between pesticide 1 and pesticide 2: 
+
+```{r}
+fit.contrast(M.lme, varname = "pesticide", coeff=c(1,-1,0))
+```
+The standard error is 1.53. 
+
+
+
+Between irrigation and no irrigation: 
+```{r}
+fit.contrast(M.lme, varname = "irigation", coeff=c(1,-1))
+```
+The SE is 1.25. 
+
+
+
+Between variety 1 and variety 2: 
+
+```{r}
+fit.contrast(M.lme, varname = "variety", coeff=c(1,-1))
+```
+The SE is 1.25. 
+
+
+
+
+
+
+
+
+
+
+
+

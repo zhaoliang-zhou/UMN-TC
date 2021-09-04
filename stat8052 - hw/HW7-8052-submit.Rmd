@@ -1,0 +1,321 @@
+---
+title: "HW7-8052"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(conf.design)
+library(faraway)
+library(FrF2)
+library(multcomp)
+```
+
+
+# E18.2
+
+
+Here we consider a $2^{6-2}$ fractional factorial design using I=ABDF=-BCDE.
+From the defining relation of I, we can also get I=ABDF=-BCDE=-ACEF. For this problem, we consider A, B, C, D to be main effects. Thus, E, F are depend on A, B, C, D. Or, equivelently, E = -BCD and F = ABD. 
+
+## (a)
+Thus, using I=ABDF=-BCDE=-ACEF, we can find the aliases of the main effects: 
+
+A = BDF = - ABCDE = -CEF;
+B = ADF = -CDE = -ABCEF;
+C = ABCDF = -BDE = -AEF;
+D = ABF = -BCE = -ACDEF.
+
+
+
+## (b)
+There are total 16 treatment combinations which can be formed using main effects A, B, C, D. We can call those embedded design and those are:  (1), A, B, C, D, AB, AC, AD, BC, BD, CD, ABC, ABD, ACD, BCD and ABCD. Since we are using E, and F to be depend on the 4 main effects A, B, C, D. Thus, the signs for E and F should be considered when constructing the final design. Thus, we can construct a table below. The very left  column is the column of embedded design, and we use E=-BCD and F=ABD to find the signs for E and F. The column on the far right is the final design. For example, looking at the example row A, the effects A, E, F all have "+" sign, and thus the final design is AEF. Similarly, For row AB, only A and B have "+" sign, thus the final design is AB. Thus, All the 16 factor level combinations are: E, AEF, BF, C, DF, AB, ACF, AD, BCEF, BDE, CDEF, ABCE, ABDEF, ACDE, BCD, ABCDF. 
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW7/E182.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## (c)
+We need to block the combinations from part (b) into two blocks of size 8. Sinc we do not want to confound a main effect, we can consider confounding a two-way interaction AB and its aliases AB=DF=-ACDE=-BCEF. Consider block 1 has combinations with an even number of letters A and B, and block 2 has odd number of letter A and B. For example, combination E has 0 letter of A and B thus should be considered putting into the even block 1. From the table from (b), all the even number combinations are highlited with yellow, thus the block assignments are: 
+
+
+Block 1 (even number AB): E, C, DF, AB, CDEF, ABCE, ABDEF, ABCDF;
+Block 2 (odd number AB): AEF, BF, ACF, AD, BCEF, BDE, ACDE, BCD. 
+Each block has size 8 as desired. 
+
+
+
+# E18.5
+Here we have 8 factors and each has 2 levels. Thus, if we run the full factorial design, we would need to have $2^8=256$ experiment units. However, since we only can afford 64 experiment units, we should consider a partial factorial (1/4) $2^{8-2}$ design. Since $2^{8-2}=64$, it will meet the budget. Since we neglected 3-way interactions as well as higher interactions but 2-way interaction must be present, it is reasonable to consider a Resolution III design where all main effects are aliased with 2-way interactions. Thus for this design, we have main effects A, B, C, D, E, F and G, H are depend on previous main effects. Since we also need to consider blocking of 4 blocks of size 16, we can use two-way interaction AB and CD for blocking: Block 1 (AB even CD even), Block 2 (AB even, CD odd), Block 3 (AB odd, CD even), Block 4 (AB odd, CD odd). 
+
+For this design, we can consider I = ABDFG = BCDEH = AEFGH (this is suggested by P618 k=8 and $2^p = 4$). Thus the alias structure is: 
+A = BDFG = ABCDEH; 
+B = ADFG = CDEH;
+AB = DFG = ACDEH. 
+
+No main effects and two-way interaction are confounded with blocks since in the defining relation there is no main effects and any two-way intractions. 
+
+
+
+
+
+
+# 3. E18.3 (do not submit for grading)
+
+It is given that I = BCDE = ACDF = ABCG = ABDH.
+Further, we can find the products of these which are also I. Thus, we have 
+
+I = BCDE = ACDF = ABCG = ABDH = ABEF = ADEG = ACEH = BDFG = BCDH = CDGH.
+Thus, the aliases of C are (only 2, and 3 way): 
+BDE, ADF, ABG, AEH, BDH, DGH
+
+
+
+# 4. P18.6
+For this study, we wish to study the thickness of the silicon and how its related to 8 factors each has two levels. WE wish to run a resolution IV, $2^{8-4}$ fractional factorial design. The dsign generator is I = ABCD = BCEF = ACEG = BCEH. 
+
+
+```{r}
+sil.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr18.6",header=TRUE)
+
+cols <- c("A", "B", "C", "D", "E", "F", "G", "H")
+sil.df[,cols] <- lapply(sil.df[,cols] , factor)
+
+
+
+```
+
+Then, we can run ANOVA
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p186.mod <- lm(thickness ~ A*B*C*D*E*F*G*H, data = sil.df)
+anova(p186.mod)
+
+```
+From the above output, we can see that factor D has especially large MS and SS, thus it appears to be significant. The alias structure is as follow: 
+```{r}
+aliases(p186.mod)
+
+```
+The defining relation is:
+```{r}
+d <- alias(p186.mod)$Complete[,"(Intercept)"]
+d[d %in% c(-1,1)]
+
+```
+Then, we can produce Half normal plot to see which effects appear to be significant
+
+```{r}
+halfnorm(-2*coef(p186.mod)[-1], labs = names(coef(p186.mod)[-1]),nlab=10)
+title(main = "Half-normal plot")
+
+```
+From the above Half-normal plot, we can se that effect D appear to be significant. However, we do not know if D is significant or its aliases are significant. Thus, we can say D and all aliases with D are aslo important and D has aliases: 
+D = AEF = BEG = CFG = AEH = DFH = CGH = BCDEF = ACDEG = ABDFG = BCDEH = ABCFH = ABDGH = BEFGH = ACDEFGH = ABC. 
+
+## Additionally
+Since D appears to be significant from ANOVA and half normal plto above, we only use D here: 
+
+```{r}
+p186.mod2 <- lm(thickness ~ D, data=sil.df)
+par(mfrow = c(2,2))
+plot(p186.mod2)
+```
+From the resildual plots above, we do not se any obvious patterns, thus the equal variacne assumption seem to hold. From the normal Q-Q plot, we see some deviation at the left tail but not severe. Thus, we can proceed to ANOVA: 
+
+```{r}
+anova(p186.mod2)
+```
+Pooling all the interactions and other main effects into error that might be 0, we obtained a p-value 7.164e-08 for the main effect D. Thus, when pooling all interactions and other main effects into error, the main effect D, deposition time, appear to be a significant effect for thickness of silicon 
+
+
+# 5. 
+By reversing A, B, C but not D, E, F, G, we then get a new design. 
+Design generator for the new block is: D=AB, E=AC, F=BC, G=-ABC. The design ngerator for the original block is: D=AB, E=AC, F=BC, G=ABC. Thus, 
+Block 1: I = ABD = ACE = BCF = ABCG. 
+Block 2: I = ABD = ACE = BCF = -ABCG = BCDE = ACDF = ABEF = -CDG = -BEG = -AFG = DEF = -ADEG = -BDFG = -CEFG = -ABCDEFG
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW7/p5.png)
+
+From the defining contrast I = ABD, we should find all terms that are same in block: 
+
+I = ABD x AC = BCDE;
+I = ABD x BCF = ACDF;
+I = ACE x BCF = ABEF;
+I = ABD x ACE x BCF = DEF; 
+Thus, the defining relation is: I = ABD = ACE = BCF = BCDE = ACDF = ABEF = DEF. Resolution is III. 
+
+
+
+
+
+
+# 6. P17.1
+
+For this study, we wish to investigate the effect of pesticide on calcium in bones. 
+
+```{r}
+chick.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr17.1",header=TRUE)
+chick.df$pesticide <- as.factor(chick.df$pesticide)
+```
+
+This is a design with covariates since diameter is numerical 
+
+
+
+## (a)
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p171.mod <- lm(calcium.conc ~ diameter + pesticide, data=chick.df)
+par(mfrow = c(2,2))
+plot(p171.mod)
+
+```
+From the residual plot above, we do not see obvious patterns of the residuals. For the Q-Q plot, we do not see severe deviation from the line. Thus, the equal variance and normality assumption seem to hold. Then, we can proceed with ANOVA: 
+
+```{r}
+Anova(p171.mod, type = 2)
+```
+From the anova output above, we can see each main effect diameter and pesticide appear to be significant main effect since each of thm has a p-value less than 0.05. Thus, we can proceed with pairwise comparison:
+```{r}
+
+p <- glht(p171.mod, linfct = mcp(pesticide = "Tukey"), alternative = "two.sided")
+summary(p)
+```
+
+From the above pairwise comparison result, pesticide group 2, 3, 4 all appear to be significantly different from group 1 as each of the differences has a p-value less than 0.05. Thus, the underline diagram is
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW7/p171under.png)
+
+Then, we can estimate the lines for aech treatmnt level:
+```{r}
+summary(p171.mod)
+```
+Thus, from the output above, we can see that:
+1. The mean of calcium conc with control is estimated as:
+calcium.conc = 0.74426 + 3.94*diameter.
+
+2. The mean of calcium conc with pesticide level 1 is estimated as: 
+calcium.conc = 0.13+ 3.94*diameter. 
+
+3. The mean of calcium conc with pesticide level 2 is estimated as: 
+calcium.conc = 0.151 + 3.94*diameter. 
+
+4. The mean of calcium conc with pesticide level 3 is estimated as: 
+calcium.conc = 0.103 + 3.94*diameter. 
+
+Note here w do not include intraction term between diameter and pesticide, thus we assumed the slope of diameter for each level of pesticide is the same. We will invesitgate if this is actually true for the next part. 
+
+## (b)
+
+
+```{r}
+p171.modb <- lm(calcium.conc ~ pesticide*diameter, data=chick.df)
+Anova(p171.modb, type=2)
+```
+From the above ANOVA output, we see that the interaction term pesticide*diameter appears to be significant on 0.05 level with p-value 0.007. Thus, there is evidence suggesting that the slope (x=diameter) is difference between different level of pesticids. 
+
+
+```{r}
+ggplot(chick.df, aes(x=diameter, y=calcium.conc, color=pesticide, shape=pesticide)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+Above is a plot of diameter vs calcium.con colored by different level of psticide. We can see that especially for pesticide level 2, 3, 4, there might exist some interactions which confirms the result from the ANVOA output above. However, this result might be affected by some outliers which we will investigate in the next section. 
+
+## (c)
+
+
+From the plot in part (b), we can see that there is a point in psticide group 2 with large diameter.
+
+```{r}
+max(chick.df$diameter)
+```
+This point is a point in pesticide group 2, diameter 3.1 and calcium.conc=12.10 and indexed 2 in the data. Thus, we can remove this point and re-analyze the data. 
+
+```{r}
+chick.df2 <- chick.df[-2,]
+
+```
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p171.modc <- lm(calcium.conc ~ diameter*pesticide, data=chick.df2)
+par(mfrow = c(2,2))
+plot(p171.modc)
+```
+From the residual plot above, we did not observe any obvious patterns and there is no severe deviation from the Q-Q plot, thus the equal variance and normality assumption seem to hold. Then, we proceed to ANOVA:
+
+```{r}
+Anova(p171.modc, type=2)
+```
+From the type II ANOVA output above, we see that the main effects diameter and pesticide appaer to be significant as each has a p-value less than 0.05. However, after removing the data point, the interaction term has a p-value 0.2456 which is not significant. Thus, we proceed with refitting the model without the interaction term:
+
+```{r}
+p171.modc2 <- lm(calcium.conc ~ diameter+pesticide, data=chick.df2)
+par(mfrow = c(2,2))
+plot(p171.modc2)
+
+```
+From the residual plot above, we did not observe any obvious patterns and there is no severe deviation from the Q-Q plot, thus the equal variance and normality assumption seem to hold. Then, we proceed to ANOVA
+
+
+```{r}
+Anova(p171.modc2, type=2)
+```
+From the ANOVA type II output above, we see that the main effects diameter and pesticide still appear to b significant as each has p-value less than 0.05. Thus, proceed to pairwis comparison for pesticide
+
+
+```{r}
+
+p2 <- glht(p171.modc2, linfct = mcp(pesticide = "Tukey"), alternative = "two.sided")
+summary(p2)
+```
+
+From the output above, we can see pesticide level 2,3,4 are significantly different from level 1. Thus, the underline diagram now becomes: 
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW7/p171under2.png)
+
+## (d)
+
+```{r}
+mod.d <- lm(diameter ~ pesticide, data=chick.df)
+anova(mod.d)
+```
+
+From the ANOVA output above, we see that when we change the response to diameter, the effect pesticide has a p-value 0.1618 > 0.05 thus is not significant. Thus th treatment does not influence the covariate value.  
+

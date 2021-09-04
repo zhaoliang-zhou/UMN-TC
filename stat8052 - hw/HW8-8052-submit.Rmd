@@ -1,0 +1,385 @@
+---
+title: "HW8-8052-submit"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(conf.design)
+library(faraway)
+library(FrF2)
+library(multcomp)
+```
+
+
+
+
+# 1. E11.3
+
+For this study, we have 5 types of tire and are chosen at random. For each type of tire, 6 tires were chosen at random. We wish to study the effect of brand on the durability of the tire. Since the treatments are randomly drawn from population, we should use random ffects model. Sinc each treatment group has equal number of observations, this is a balancd design. 
+ 
+```{r}
+tire.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/ex11.3",header=TRUE)
+
+
+tire.df$brand <- as.factor(tire.df$brand)
+```
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+e113.mod <- lm(y ~ brand, data = tire.df)
+anova(e113.mod)
+
+```
+Checking assumptions: 
+```{r}
+par(mfrow = c(2,2))
+plot(e113.mod)
+```
+From the residual vs. fitted plot above, we did not observe any obvious pattern, and the line is horizontal at y=0, thus the equal variance assumption is met. For the normal Q-Q plot, there are no significant deviantions of the point from the line, thus the normality assumption is met.
+
+
+
+We need to compute a 99% CI, we have $a = 0.05$, and $a/2 = 0.001$. From the ANOVA output above, we can get $MS_{trt} = 271.383$ and $MS_e = 3.373$
+We can use the formula in P11.7 of the lecture notes to calculate the 99% CI, and here we have $n=6$
+
+```{r}
+MS_trt = 271.383 
+MS_e = 3.373
+n = 6
+a = 0.01
+df_e = 25 
+df_trt = 4
+L <- (1/n) * ( (MS_trt/MS_e)* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( (MS_trt/MS_e)* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+
+```
+Thus, the 99% CI for the ratio is $(2.61, 268.06)$. I believe this CI actually has 99% coverage because for any two effects, the mean squares $MS_1$ and $MS_2$ are independent, and the product of the ratio of MS and EMS. ie $MS_1/MS_2 * EMS_2/EMS_1$ follows exactly an $F$ distribution with df $df_1$ and $df_2$.  
+
+
+## Additioanlly 
+
+### (a)
+We can look at the ANOVA output again: 
+
+```{r}
+anova(e113.mod)
+
+```
+From the abov ANOVA output. we can see that the "brand" variable has a test statistic $F=80.45$ with 4 degrees of freedom, and the corresponding p-value close to 0. Thus, we have strong evidence suggesting that brand does have an effect on tread durability.   
+
+### (b)
+
+
+For the point estimate for the intra class, we have:
+$$\hat{\sigma}^2 = 3.373  \\
+\hat{\sigma}_A^2 = \frac{MS_{trt} - MS_e}{n} = \frac{271.383 - 3.373}{6} = 44.67$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Thus, using the formula for the point estimate:
+$$\frac{\hat{\sigma}_A^2}{\hat{\sigma}_A^2 + \hat{\sigma}^2} = \frac{44.67}{44.67+3.373} = 0.93$$
+Thus, the point estimate is 0.93. 
+
+
+
+From the original question above, we have calculated $L=2.61$ and $U = 268.057$, thus for the intraclass CI is:
+$$(\frac{L}{1+L},\frac{U}{1+U})$$
+```{r}
+a <- 0.05
+L <- (1/n) * ( (MS_trt/MS_e)* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( (MS_trt/MS_e)* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+lower <- L/(1+L)
+upper <- U/(1+U)
+
+lower;upper
+```
+Thus, the 95% CI for the intra-class correlation is (0.793, 0.991)
+
+
+
+# 2. E11.5 
+
+## (a)
+The point estimate for the between location variance can be calculated as following: 
+
+$$\hat{\sigma_{trt}}^2 = \frac{MS_{trt} - MS_e}{n} = \frac{1.288 - 0.0921}{10} = 0.11959$$
+
+Thus, the point estimate for the between location variance is 0.11959
+
+
+## (b)
+The 95% CI for within location variance can be claculated as follow: 
+Since, we use $a=0.05$, we can use the formula on lecture note P11.15 to find the CI 
+
+```{r}
+a = 0.05
+df_e = 20
+
+MS_e = 0.0921
+
+lower_chi_crit <- qchisq(1-a/2, df_e, lower.tail=TRUE)
+upper_chi_crit <- qchisq(a/2, df_e, lower.tail=TRUE)
+
+
+LB <- df_e*MS_e/lower_chi_crit
+UB <- df_e*MS_e/upper_chi_crit
+
+LB;UB
+```
+
+Thus, the 95% CI for within location variance is (0.054, 0.192). 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 3. E11.6 
+
+Because we hav here that $\sigma^2 = \sigma^2_A$, thus the scalar can be reduced to $\frac{1}{n+1}$
+```{r}
+n = 2
+while(T){
+  q_null = (1/(1+n))*qf(1-0.01/2, 1, 2*n-2)
+  p = 1 - pf(q_null, 1, 2*n-2)
+  if (p<=0.9){
+    n = n+1
+  } else {
+    break
+  }
+}
+print(n)
+```
+Thus, 500 individuals should be tested to have power 0.9 of this set up. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4. P11.1 
+
+There are two plans, and those are: 
+
+Plan A: 10 masurements - 10 students
+Plan B: 2 measurements - 50 students
+
+
+
+And we can calculate the CI for the ratio of the variances. To compare the different plans, we can construct 95% CI and find the plan that gives the shortest interval. For each plan, there are also two cases to consider: case 1: $MS_{trt} > MS_e$ and for this case, we chose the ratio to be 2, and case 2: $MS_{trt} < MS_e$ and we choose the ratio to be 0.5 
+
+Plan A: 
+10 measurements - 10 students
+
+Case 1: ratio = 2
+```{r}
+MSE_ratio = 2
+n = 10
+a = 0.05
+df_e = 100-10
+df_trt = 10-1
+L <- (1/n) * ( MSE_ratio* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( MSE_ratio* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+
+U - L
+
+```
+
+Case 2: ratio = 0.5
+
+
+```{r}
+MSE_ratio = 0.5
+n = 10
+a = 0.05
+df_e = 100-10
+df_trt = 10-1
+L <- (1/n) * ( MSE_ratio* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( MSE_ratio* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+
+U-L
+
+```
+
+
+
+Plan B: 2 measurements - 50 students 
+
+Case 1: ratio = 2
+```{r}
+MSE_ratio = 2
+n = 50
+a = 0.05
+df_e = 100-50
+df_trt = 50-1
+L <- (1/n) * ( MSE_ratio* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( MSE_ratio* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+
+U-L
+
+```
+
+Case 2: ratio = 0.5
+
+```{r}
+MSE_ratio = 0.5
+n = 50
+a = 0.05
+df_e = 100-50
+df_trt = 50-1
+L <- (1/n) * ( MSE_ratio* qf(a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+L
+U <- (1/n) * ( MSE_ratio* qf(1-a/2, df_e, df_trt, lower.tail=TRUE) -1 )
+U
+
+U-L
+```
+
+We can see that for both cases, plan B has the shortest interval, thus 2 measurements and 50 students should get better results. 
+
+
+
+# 5. P11.2 
+
+```{r}
+mk.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr11.2",header=TRUE)
+mk.df$sample <- as.factor(mk.df$sample)
+mk.df$lab <- as.factor(mk.df$lab)
+
+```
+
+
+First, fit a model including a two way interaction between lab and sample
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p112.mod <- lm(bacteria ~ sample*lab, data=mk.df)
+```
+
+
+Checking assumptions: 
+```{r}
+par(mfrow = c(2,2))
+plot(p112.mod)
+```
+For the residual vs. fitted plot, most the points fall on the line where y=0 thus qual variance sems reasonable. For the normal Q-Q plot, there ar esoem deviations especially at two ends. 
+
+
+
+
+
+
+```{r}
+anova(p112.mod)
+```
+
+From the ANOVA output above, we can se that for the between column difference (sample) or intra lab diffence, it has a MS=24676723, F=242.5409 with df=3 and the corresponding p-value is 6.860e-16. Since the p-value is less than 0.05, we can conclude that there is strong evidence suggesting that there is a difference between samples within the same Lab. For the between row difference (lab) or the between lab difference, it has MS=1671204, F=16.4258 with df=4 and the corresponding p-value is 4.151e-06. Since the p-value is less than 0.05. we can conclude there is strong evidence suggesting the bactria concntration is different between labs.  
+
+
+
+
+
+
+
+# 6. P15.3
+
+
+## (a)
+For this problem, since we anticipate large stream to stream difference, we should consider complete block design with 8 blocks where each block represent each stream. Each block has equal size of 2, and 1 observation for forsted area and 1 observation for agricultural area. We have n=1 replicate.  
+
+
+
+## (b)
+Since 5 factors with ach factor has 2 levels. We should first consider $2^k$ factorial design. However, we can only do 8 recipes a day. Thus, we should also consider confounding where we can use 4 blocks of size 8. 
+Since we expect large variance between days, we should also include days as a block. Thus, for this dsign, w hav eto consider to sacrifice som of the effects (for example, some higher order interactions) 
+
+## (d)
+Since we have 3 factors and each has level 2, we should consider a $2^3$ factorial design. Since we have 24 pots, but $2^3=8$, this means that for each factor combinations, there are $n=3$ replicates. We also include trays where for each tray we can fit 4 pots. If we assume tray to tray difference to be important, we should consider tray as blocks so we have 6 blocks of size 4. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+a = 0.05 
+
+
+(1/(pf(1-(a/2), 10, 90))) - (1/(pf(a/2, 10, 90)))
+(1/(pf(1-(a/2), 2, 98))) - (1/(pf(a/2, 2, 98)))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

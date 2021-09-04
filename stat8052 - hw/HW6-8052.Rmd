@@ -1,0 +1,262 @@
+---
+title: "HW6-8052"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(conf.design)
+library(faraway)
+```
+
+
+
+# E15.2
+
+## By hand
+To solve this problem by hand, we could use the odd/even technique and construct a table below which is similar to Table 15.4 in the Textbook. 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW6/e152a.png)
+From the table above, according to whether each main effect/interaction is even or odd, we could put them into 4 blocks like below:  
+
+
+
+
+
+
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW6/e152b.png)
+From the block above, we could see the factor level combinations that go into each block are: 
+Block 1 (ACD even, ABD even): (1), abc, ad, bcd. 
+Block 2 (ACD odd, ABD even): ab, c, bd, acd. 
+Block 3 (ACD even, ABD odd): b, ac, abd, cd. 
+Block 4 (ACD odd, ABD odd): a, bc, d, abcd. 
+
+
+
+## Using R
+
+```{r}
+g <- rbind(c(1,0,1,1), #ACD
+           c(1,1,0,1)) #ABD
+colnames(g) <- LETTERS[1:4]
+g
+```
+
+
+```{r}
+conf.set(g, p=2)
+```
+
+```{r}
+conf.design(g, p=2, block.name = "blocks")
+```
+
+From the outoput above, we can see that th blocks are: 
+
+Block00: (1), abc, ad, bcd which correspond to Block 1 above. 
+
+Block01: b, ac, abd, cd which correspond to Block 3 above. 
+
+Block10: ab, c, bd, acd which correspond to Block 2 above.  
+
+Block11: a, bc, d, abcd which correspond to Block 4 above. 
+
+Thus, we have used R to confirm the blocks assignment and the two results agree with ach other. 
+
+
+
+
+## 15.3
+
+
+```{r}
+g153 <- rbind(c(1,1,1,0,0,1,0,0), #ABCF
+              c(1,1,0,1,1,0,0,0), #ABDE
+              c(1,0,1,1,1,0,0,0), #ACDE
+              c(0,1,1,1,0,0,0,1)) #BCDH
+                
+
+
+
+colnames(g153) <- LETTERS[1:8]
+g153
+```
+
+```{r}
+conf.set(g153, p=2)
+```
+
+The confounded effects are: 
+1. ABCF;
+2. ABDE;
+3. CDEF;
+4. ACDE;
+5. BDEF;
+6. BC;
+7. AF; 
+8. BCDH;
+9. ADFH; 
+10. ACEH;
+11. BEFH;
+12. ABEH;
+13. CEFH;
+14. DH;
+15. ABCDFH. 
+
+
+# P15.5
+
+```{r}
+biomass.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr15.5",header=TRUE)
+biomass.df$tank <- as.factor(biomass.df$tank)
+biomass.df$A <- as.factor(biomass.df$A)
+biomass.df$B <- as.factor(biomass.df$B)
+biomass.df$C <- as.factor(biomass.df$C)
+
+```
+
+For this problem, we wish to study if there are any effects of treatment on milfoil biomass. WE have 3 treatments: a. whether weevil's parents were raised on Eurasian or northern, b. whether weevil has hatched or eurasian or northren, and c. whether weevil grow to maturity on Eurasian or northern. We have 8 tanks (blocks) and each tank has 4 sections (replicate=4). Since we have replicates=4 less than the numbr of blocks 8, this is a Balancd Incomplete Block Design (BIBD). Thus, we begin by fitting a linear regression and check the assumptions: 
+
+```{r}
+p155.mod <- lm(milfoil.biomass ~ tank + A*B*C, data=biomass.df)
+
+```
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(p155.mod)
+```
+
+From the diagnosis plots above, we can see that from th residual vs. fitted plot, the varaince of the residuals are smaller with lower fitted values then increases as the fitted value increases, and then decrease for large fitted values. This indicate a violation of the equal variance assumption. From Normal Q-Q plot, we see no obvious curvatures or deviations, thus the normality assumption seem to hold. Since there might be concerns with unequal variance, we then check with box-cox transformation.  
+
+
+```{R}
+p155.bc <- boxcox(p155.mod, lambda = seq(-4,4,0.1))
+```
+
+
+```{r}
+pos <- which.max(p155.bc$y)
+p155.bc$x[pos]
+```
+Box-cox suggested a transformation with power of 0.44. Since 0.5 is included in the 95% CI and for convenience, we choose a power of 0.5 transformation which is the square root transformation.  
+
+```{r}
+biomass.df$sqrtY <- sqrt(biomass.df$milfoil.biomass)
+```
+
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p155.modA <- lm(sqrtY ~ tank + A*B*C, data=biomass.df)
+
+```
+
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(p155.modA)
+```
+From the Residuals vs. fitted plot above, we see the residuals spread more equally above and below the horizontal line y=0 across different levels of fitted values. Thus, the square root transformation seems to make some improvements. Thus, we proceed to ANOVA with the square root transformation of the response. 
+
+```{r}
+anova(p155.modA)
+```
+From the ANOVA ouput above, we can see that B, C appear to be significant as main effects with p-values all close to 0. All the two-way interactions and 3 way interactions do not appear to be significant on 0.05 significance level. In conclusion, effect B and C are the significant main effects, and we do not have evidence to suggest there is any 2-way and 3-way interactions between A,B and C
+
+Check if there are any confoundings with blocks:L 
+```{r}
+alias(p155.modA)
+```
+From the output above, we did not find effects confounded with blocks. Then, we can visualiz the those effects from the ANOVA output usign hal-normal plot:
+```{r}
+halfnorm(-2*coef(p155.modA)[-1], labs = names(coef(p155.modA)[-1]),nlab=10)
+title(main = "Half-normal plot")
+
+```
+From the half-normal plot above, we can see besides the effect of tanks (blocks), B and C as main effect appear to be the most significant effects which confirms the result from ANOVA output above. Since we found that B and C are significant main effects. We can do pairwis comparison for B and C individually. 
+
+```{r}
+p155.aov <- aov(sqrtY ~ tank + A*B*C, data=biomass.df)
+
+```
+
+
+```{r}
+TukeyHSD(p155.aov , 'B')
+```
+From the output above, we can see that level 2 of factor B has greater biomass (square root) than that of level 1 of factor B. Such difference is statistically significant with p-value close to 0 on a 0.05 significance level. 
+
+
+```{r}
+TukeyHSD(p155.aov , 'C')
+```
+For factor C, the above output suggests that level 2 of factor A has greater  biomass (square root) than that of level 1 of factor A. Such difference is statistically significant with p-value close to 0 on a 0.05 significance level. 
+
+
+
+
+
+
+
+# P15.6
+For this study, scientiest wish to study how the amount of sugar, culture strain, type of fruit, and pH influence the shelf life of yogurt.  We have two coolers (blocks) and each cooler has 8 yogurt. We have 1 replicate for every combination of factors. The response is the number of days until an ordor is detected. This is a $2^4$ factorial design. 
+
+```{r}
+yog.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr15.6",header=TRUE)
+yog.df$cooler <- as.factor(yog.df$cooler)
+yog.df$A <- as.factor(yog.df$A)
+yog.df$B <- as.factor(yog.df$B)
+yog.df$C <- as.factor(yog.df$C)
+yog.df$D <- as.factor(yog.df$D)
+```
+
+
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+p156.mod <- lm(days ~ cooler + A*B*C*D, data = yog.df)
+```
+
+
+
+
+
+
+
+We check which effectrs are confounded with cooler (blocks)
+```{r}
+alias(p156.mod)
+```
+From the output above, we can see that the interaction abcd is confounded with blocks.  
+
+
+
+```{r}
+anova(p156.mod)
+```
+
+Above is the ANOVA output for the model. Then, we can use hal normal plot to check which effets are particularly important
+```{r}
+halfnorm(-2*coef(p156.mod)[-1], labs = names(coef(p156.mod)[-1]),nlab=3)
+title(main = "Half-normal plot")
+
+```
+
+From the half normal plot above, we can see that effect D (pH levels) appears to be particularly important which we can see from the ANOVA output D has the largest associated SS. Also, we do not have evidence of any interaction effecs involving D appear to be significant  
+
+

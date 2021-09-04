@@ -1,0 +1,490 @@
+---
+title: "HW5-8052-submit"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(multcomp)
+library(faraway)
+```
+
+
+
+# 1. E13.4(do not submit for grading)
+Here we have 6x6 Latin Square where we reuse the rows but not columns. We hvae 3 replicates and 6 treatments. Thus, g=6 and m=3. The sources and associated df are: 
+grand mean ($\mu$): df=1; 
+between treatments: df=g-1=5;
+betwen squares: df=m-1=2;
+between rows: df=g-1=6-1=5;
+between columns: m(g-1) = 3(6-1)=15;
+errors: df = (mg-2)(g-1) = (18-2)(5)=80
+
+
+
+
+
+# 2. E13.5
+For this experiment, we want investigate if disk drive substrates may affect the amplitude of the signal obtained during read back. 
+We have four substrates: 
+A. aluminum; 
+B. nickel-plated aluminum;
+C. one type of glass
+D. another type of glass
+
+We have 3 blocks: operator, machine, and day of production. 
+Since we have 3 blocks, this is a Graeco-Latin Square design
+Read in data:
+
+```{r}
+drive.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/ex13.5",header=TRUE)
+drive.df$operator <- as.factor(drive.df$operator)
+drive.df$machine <- as.factor(drive.df$machine)
+drive.df$day <- as.factor(drive.df$day)
+drive.df$trt <- as.factor(drive.df$trt)
+
+
+
+```
+
+
+Since this is a Graeco Latin square design, we do not assume interaction between blocks and treatment
+```{r}
+e135.mod <- lm(y ~ operator + machine + day + trt, data = drive.df)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(e135.mod)
+```
+Looking at the Residual vs. fitted plot, it seems that as the mean increases, the residuals are mostly negative which increasing decrasing residual varaince. We then use Box-cox to check for transformation:
+
+```{r}
+modE135.bc <- boxcox(e135.mod, lambda = seq(-6,6,0.1))
+pos135 <- which.max(modE135.bc$y)
+modE135.bc$x[pos135]
+```
+The Box-cox transformation suggest $\lambda=2$, which is a square transformation
+
+```{r}
+#create square transform
+drive.df$y2 <- (drive.df$y)^2
+```
+
+refit the model: 
+```{r}
+e135.modA <- lm(y2 ~ operator + machine + day + trt, data = drive.df)
+```
+
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(e135.modA)
+```
+The residuals look somewhat better than before as they are more equally spread above and below the horizontal line y=0. 
+
+
+```{r}
+anova(e135.modA )
+```
+Looking at the above ANOVA output the p-value associated with treatment is 0.1099 which is greater than 0.05. Thus, we do not have strong evidence suggesting that the disk drive substrates (treatment) affect the amplitude of the signal. Further, we can try multiple comparisons
+
+
+```{r}
+e135.aov <- aov(y2 ~ operator + machine + day + trt, data = drive.df)
+TukeyHSD(e135.aov, "trt")
+```
+Above is the tukey multiple comparisons of the means between different treatment groups. We see that each possible pair of the treatment has a significant p-valu on 0.05 significance level. Thus, we can compare there is no 1 treatment mean that is significantly differ from the other which agrees with the ANOVA output from above. For completeness, below is the underline diagram of the means for each treatment:
+
+
+```{r}
+sort(model.tables(e135.aov, type="mean")$tables$'trt')
+```
+We can see that treatmen 4 has the largest mean and 3 has the smallest mean. However, there is not on treatment mean that is significantly differ from the other. 
+
+
+
+
+
+
+# 3. P13.4 
+For this problem, the blocks are: Student (1-10), and Grader (1-5)
+We have treatment A,B,C,D,E where A and B are new exams and B,C,D are old exams
+
+```{r}
+exam.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr13.4",header=TRUE)
+exam.df$student <- as.factor(exam.df$student)
+exam.df$grader <- as.factor(exam.df$grader)
+exam.df$exam <- as.factor(exam.df$exam)
+```
+
+
+```{r}
+p134.mod <- lm(score ~ student + grader + exam, data=exam.df)
+```
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(p134.mod)
+```
+
+Above are the diagnosis plots, looking at the residual vs. fitted values, we can see that as fitted value increases, the varaicne of the residuals seem to decrease. Thus, this indicates an unconstant residual variance and we need to consider transformation of the response. Consider Box-cox transformation 
+
+```{r}
+modP134.bc <- boxcox(p134.mod, lambda = seq(-6,6,0.1))
+posP134 <- which.max(modP134.bc$y)
+modP134.bc$x[posP134]
+```
+From Box-cox transformation, it suggests a $\lambda=1.9$ trasnformation. Becasue $\lambda=2$ is in the 95% CI and for convenience of interpretation, we would picl $\lambda=2$ transformation which is square transformation: 
+
+```{r}
+exam.df$score2 <- (exam.df$scor)^2
+```
+
+
+
+
+Then, we refit the model with score^2 as the response
+```{r}
+p134.modA <- lm(score2 ~ student + grader + exam, data=exam.df)
+```
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(p134.modA)
+```
+The residuals look more constant compare to before. 
+
+```{r}
+anova(p134.modA)
+```
+Above is the ANOVA output, and we can see that types of exam (treatment) is a significant predictor for log(score) with associated p-value close to 0 (2.075e-12). Thus, we have strong evidence that exam types has strogn effect on log(score), then we proceed to pairwise comparison: 
+
+
+```{r}
+p134.aov <- aov(score2 ~ student + grader + exam, data=exam.df)
+TukeyHSD(p134.aov, "exam")
+```
+Recall that exam 1, 2 are new exams. Exam 3,4,5 are old exams. From the above Tukey HSD pairwise comparison, we can see that exam 1 is significantly differ from exam 2,3,and 5. Exam 2 is significantly differ from exam 3,4,and 5. Exam 3 is significantly differ from exam 4. Exam 4 is significantly differ from exam 5. The significance level is taken to b 0.05.     
+
+
+
+```{r}
+plot(TukeyHSD(p134.aov, "exam"))
+```
+Above is the 95% CI plot for all possible pairs of exams. Looking at the plot, we can see that almost all the CI does not contain 0 except for the pair 3-5 and the pair 1-4. Thus, for the old exams 3,4,5 all pairs are differ except for teh pair 3-5. Thus, we can conclude the old exams are not equivalent except that exam 3 is equivalent to exam 5. To consider the difference between new exams and old exams, we can compare the mean for new exams vs. the mean for old exams where we can use a contrast (1/4, 1/4, -1/6,-1/6,-1/6)
+
+
+```{r}
+fit.gh <- glht(p134.aov, linfct = mcp(exam = c(1/4, 1/4, -1/6,-1/6,-1/6)))
+summary(fit.gh)
+```
+From the output above, we can see that the estimated difference between new exam and old exam is 71.62 and we can take the square root which is about 8.5. Such difference is not significant since the associated p-value is 0.252 and bigger than 0.05. Thus, we can conclude that the new exams are equivalent to the old exams. Below is the underline diagram 
+
+
+```{r}
+sort(model.tables(p134.aov, type="mean")$tables$'exam')
+```
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW5/P134.png)
+
+# 4. P13.6
+
+For this problem, we have variety with 16 levels, treatment 3 levels, and 2 replicates. 
+```{r}
+soy.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr13.6",header=TRUE)
+soy.df$location <- as.factor(soy.df$location)
+soy.df$trt <- as.factor(soy.df$trt)
+soy.df$variety <- as.factor(soy.df$variety)
+```
+
+
+first fit a linear regression
+```{r}
+p136.mod <- lm(biomass ~ location + variety + trt, data=soy.df)
+```
+
+
+Check the assumptions:
+```{r}
+par(mfrow = c(2,2))
+plot(p136.mod)
+```
+
+From the diagnosis plot, when looking at the residual vs. fitted plot, we can observe that the points become more spread out as the fitted value increases. This suggest an increasing residual variance. From normal Q-Q plot, the normality assumption seem to hold. Since we have potential unequal variance, we might consider transformation of the response. 
+First, consider Tukey's 1 df test: 
+
+```{r}
+#tukey 1 sd
+
+ypred <- p136.mod$fitted.values
+mu <- mean(soy.df$biomass)
+onedf <- ypred^2/(2*mu)
+p136.onedf <- lm(biomass ~ location + variety + trt + onedf, data=soy.df)
+anova(p136.onedf)
+```
+From the above output, we can see that the onedf variable is significant on 0.01 significance level with p-value 6.381e-05. Thus, this implies that there is interaction. 
+To get the transformation:
+```{r}
+eta <- p136.onedf$coefficients["onedf"]
+eta;1-eta
+```
+The Tukey 1 df test suggest to use transformation where $y^{0.08}$. Then, we consider Box-cox transformation: 
+
+
+```{r}
+modP136.bc <- boxcox(p136.mod, lambda = seq(-6,6,0.1))
+posP136 <- which.max(modP136.bc$y)
+modP136.bc$x[posP136]
+```
+
+The box-cox transformation suggest a transformation of $\lambda = 0.3$. For convenience, we pick $\lambda=0.5$ which is the square root transformation of the response. 
+
+```{r}
+soy.df$logy <- sqrt(soy.df$biomass)
+```
+
+
+refit the modl with log(biomass)
+```{r}
+p136.modA <- lm(logy ~ location + variety + trt, data=soy.df)
+```
+
+
+Check assummtions again: 
+```{r}
+par(mfrow = c(2,2))
+plot(p136.modA)
+```
+From the diagnosis plot above, we see that from residual vs. fitted plot, the residual spread more equally and the variance of the residuals become more constant. 
+
+```{r}
+anova(p136.modA)
+```
+From the above ANOVA output, we can see that treatment is significant on 0.05 level with a p-value of 3.743e-15. However, variety does not appear to be significant with p-value 0.08. Then, we can further investigae if treatment interact with variety: 
+
+```{r}
+p136.modB <- lm(logy ~ location + variety*trt, data=soy.df)
+anova(p136.modB)
+```
+From the above ANOVA plot, we can see that the interaction between variety and treatment does not appear to be significant on 0.05 level with p-value 0.8621. We can also use visualization to confirm: 
+
+```{r}
+with(soy.df, interaction.plot(x.factor = variety, trace.factor = trt, response = logy))
+```
+
+From the above interaction plot, we can see that as variety moves from 1 to 16, 3 lines for different treatments almost parallel to each other. 
+
+```{r}
+with(soy.df, interaction.plot(x.factor = trt, trace.factor = variety, response = logy))
+```
+Above is another way of plotting interaction between treatments and variety. We can see as treatment moves from 1 to 3, the 16 lines for variety almost parallel to each other. These suggest that there is not an significant interaction effect between variety and treatments which agrees with the ANOVA output. 
+Thus we can further investigate which treatment mean differ: 
+```{r}
+p136.aov <- aov(logy ~ location + variety+trt, data=soy.df)
+TukeyHSD(p136.aov, "trt")
+```
+Above is the output for TukeyHSD multiple pairwise comparison. We can see that all pairs have significant difference on 0.05 level. Since the design involves a control group which is treatment 3 (No herb), thus we can consider Dunnet's method comparing treatments with a control
+
+```{r}
+p136.dunnet <- glht(p136.modA, 
+                    linfct = mcp(trt = contrMat(1:3, type="Dunnet", base=3)), 
+                    altrenative = "two-sided")
+summary(p136.dunnet)
+```
+From the output above, we can see that treatment 1 (Herb 2 weeks) is significantly differ from the control (no herb) with p-values close to 0 (< 1e-10). Also, treatment 2 (Herb 4 weeks) is significantly differ from the treatment with p-value 1.87e-06. Thus, we can conclude that herbicide is a significant factor for weed biomass (response) and the mean response for applying herbicide is significantly differ from that of not applying herbicide. In addition, we found that variety of soybeans does not appear to affect the weed biomass, and there is no significant interaction between variety and herbicide.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 5. P14.3 
+
+This is an BIBD.
+g: treatment. Grader 
+b: blocks. Writting sample 
+k: size of each block 
+r: number of replicates. r=bk/g
+$\lambda$=r(k-1)/(g-1)
+
+Thus, for this problem, we have: 
+$$g = 25 \\ 
+b = 30 \\
+k = 5 \\
+r = bk/g=6 \\
+\lambda = r(k-1)/(g-1)=1$$
+
+
+```{r}
+edu.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr14.3",header=TRUE)
+edu.df$exam <- as.factor(edu.df$exam)
+edu.df$grader <- as.factor(edu.df$grader)
+```
+
+
+```{r}
+p143.mod <- lm(score ~ exam + grader, data=edu.df)
+```
+
+
+Check the assumptions:
+```{r}
+par(mfrow = c(2,2))
+plot(p143.mod)
+```
+Above is the diagnosis plots. From the residual vs. fitted plot, we can see the the points are equally apread above and below the y=0 horizontal line. This suggest that the equal variance assumption seems to hold. For Normal Q-Q plot, most the points fall on to the dotted line expecialyl at two ends. This suggest that the normality assumtpion seems to hold. Proceed with ANOVA test: 
+
+```{r}
+anova(p143.mod)
+```
+
+From the ANOVA output above, we can see that grader (treatment) is statistically significant on 0.05 level with p-value 2.694e-08. To investigate which grader differs, we further do Tukey HSD pairwise comparison via glht(multicomp):
+
+```{r, warning=FALSE}
+p143.aov <- aov(score ~ exam + grader, data=edu.df)
+p143.glht <- glht(p143.aov, 
+                  linfct = mcp(grader = "Tukey"),
+                  alternative="two.sided")
+summary(p143.glht)
+
+```
+
+```{r}
+sort(model.tables(p143.aov, type="mean")$tables$'grader')
+```
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW5/P143.png)
+
+Above is the underline diagram for the Tukey HSD pairwise comparison. From the Tukey HSD pairwise comparison result, we can see that grader 1 is significantly differ from grader 4. Other significant differences can be interpreted the same way. We can notice that grader 3 and 4 are significantly differ with most of other graders. 
+
+
+
+
+
+# 6. P14.5
+
+## (a)
+For this problem, we have treatment with 4 levels, thus g=4. Since large site difference is expected, thus we should use site as blocks. Thus we have 8 sites (8 blocks, b=8), and block size 3 (k=3). Since our block size 3 is smaller than the number of treatment 4, I would consider to use an BIBD. To check for the BIBD condition: 
+$$r = bk/g = 24/4 = 6 \\
+\lambda = r(k-1)/(g-1) = 12/2=6$$
+Since $\lambda=6$ is a whole number. Thus, BIBD may exists.
+Thus, for this experiment, we consider a BIBD with g=4 treatments, arranged in b=8 incomplete blocks of size k=3. Each treatment appears r = 6 times. 
+
+
+## (b)
+For this problem, we have 4 brands of tape to be treatment, thus g=4. Since we expect carton to carton difference, and for each box position to position difference, we can make two blocks: 1 for box and 1 for position. WE could consider a Replicate Latin Square design with n=4 times. The design is illustrated in Appendix. For this design, on one box, each brand of tapes only appear once, and once as well for each run time. Thus, we could analysis the effect of tape and use multiple pairwose comparison to find out the brand that pulled away less. 
+
+
+
+# 7. P10.7
+For this study, we have factors type complaint, age, length of the time known the family, maturity of patients. The response is the fraction of doctors who would keep confidentiality. Thus, this is a $2^k$ factorial design with $k=4$. 
+```{r}
+doc.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr10.7",header=TRUE)
+doc.df$complaint <- as.factor(doc.df$complaint)
+doc.df$age <- as.factor(doc.df$age)
+doc.df$timeknown <- as.factor(doc.df$timeknown)
+doc.df$maturity <- as.factor(doc.df$maturity)
+
+
+```
+
+
+
+
+
+
+
+### Method 1: Half-normal plot
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+
+p107.mod1 <- lm(y ~ complaint*age*timeknown*maturity, data=doc.df)
+anova(p107.mod1)
+
+```
+
+
+
+```{r}
+halfnorm(coef(p107.mod1)[-1], labs=names(coef(p107.mod1 )[-1]), nlab=3)
+title(main="Half-normal plot, effects in y ~complaint*age*timeknown*maturity ")
+```
+
+From the half normal plot above, we can see that maturity, age, and complaint appear to be important. 
+
+
+
+### Method 2: Pooling error
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+
+p107.mod2 <- lm(y ~ (complaint+age+timeknown+maturity)^2, data=doc.df)
+anova(p107.mod2)
+
+```
+For this method, we pooled the 3rd and 4th order interaction into 0. The underlying assumtpion is that the 3rd and 4th interaction has 0 effects. From the ANOVA output above, we can see that complaint, age, and maturity appear to be sattistically significant with associated p-values all less than 0.05. This result agrees with the result from Method 1. 
+
+### Method 1: Lenth PSE
+
+```{r}
+z <- 2*coef(p107.mod1)[-1]
+s0 <- median(abs(z))*1.5
+s0
+```
+
+```{r}
+z2 <- z[abs(z) < s0*2.5]
+z2
+```
+
+```{r}
+pse <- median(abs(z2))*1.5
+pse
+```
+
+
+```{r}
+t0 <- z/pse
+t0
+```
+
+```{r}
+k <- 4
+2*pt(-abs(t0), (2^k - 1)/3)
+
+```
+From the results above, we can see that complaint, age, and maturity all have p-values less than 0.05 and thus significant. Thus, usign 3 different methods, we can conclude the factors that would influence pediatrician's decision are complaint, age, and maturity. 
+
+
+
+
+
+
+
+

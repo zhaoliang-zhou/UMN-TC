@@ -1,0 +1,282 @@
+---
+title: "HW-1 Appendices"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r}
+library(ggplot2)
+```
+
+
+#E2.2
+
+##c)
+
+```{r}
+d <- c(-1,6,4,6,2,-3,5)
+t <- mean(d)/(sd(d)/sqrt(7))
+t
+
+pval <- 1-pt(t,6)
+pval
+
+```
+
+
+##d)
+```{r}
+set.seed(8052)
+d <- c(-1,6,4,6,2,-3,5)
+df <- c()
+for (i in 1:500){
+  sign <- sample(c(1,-1), 7, replace = T)
+  df <- cbind(df, d*sign)
+}
+m <- apply(df, 2, mean)
+
+
+```
+
+
+```{r}
+permutation_pval <- length(which(m >=mean(d)))/500
+permutation_pval
+```
+
+
+
+##e)
+```{r}
+hist(m, main="Randomization Distribution", xlab = "Averge differences")
+abline(v=mean(d), col="red")
+
+```
+
+
+
+#E3.2
+```{r}
+df32 <- c(2.16, 2.45, 2.91, 3, 2.71)
+g <- 5 
+N <- 125
+SSe <- 153.4
+
+```
+
+```{r}
+SStrt <- 25*sum( (df32 - mean(df32))^2)
+MStrt <- SStrt/(g-1)
+MSe <- SSe/(N-g)
+
+F_stat <- MStrt / MSe
+F_stat
+
+```
+```{r}
+MStrt;MSe
+```
+
+```{r}
+1 - pf(F_stat,4,120)
+```
+
+
+
+#P3.2
+
+
+
+
+```{r}
+setwd("C:/Users/leonz/Desktop")
+install.packages("oehlert_1.02.tar.gz",repos=NULL,type="source")
+```
+
+```{r}
+library(oehlert)
+library(dplyr)
+```
+
+
+
+```{r}
+df32 <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr3.2",header=TRUE)
+```
+
+
+
+
+
+```{r}
+df32 <- df32 %>%
+    mutate(companions = case_when(trt == 1 ~ 'none',
+                                  trt == 2 ~ '1 pregnant',
+                                  trt == 3 ~ '1 virgin',
+                                  trt == 4 ~ '8 pregnant',
+                                  trt == 5 ~ '8 virgin'))
+```
+
+
+
+
+```{r}
+df32$companions <- as.factor(df32$companions)
+```
+
+
+
+
+
+
+```{r}
+l1 <- lm(days ~ companions, data = df32)
+summary(l1)
+```
+
+```{r}
+anova(l1)
+```
+
+
+##a)
+```{r}
+ggplot(df32, aes(x=companions, y=days)) + 
+  geom_boxplot()
+
+```
+
+
+##b)
+
+```{r}
+tapply(df32$days, df32$companions, mean)
+```
+```{r}
+Means <- c(63.36, 63.56, 64.80, 56.76, 38.72)
+
+```
+
+
+```{r}
+trt_effect <- Means - mean(Means)
+trt_effect
+```
+
+
+```{r}
+#calculate MSe
+tapply(df32$days, df32$companions, var)
+MSe <- 24*(270.6733  + 245.0000 +  222.8567 +  146.4600 +  211.4067 )/(120)
+MSe
+```
+
+
+```{r}
+lg <- qt(0.975,120)*sqrt(MSe*(1/25 - 1/125))
+c(trt_effect[1] -lg, trt_effect[1] + lg)
+
+```
+
+
+
+##c)
+```{r}
+lge <- qt(0.975, 120)*sqrt(MSe*(2/25))
+c(63.36 - 56.76 -lge, 63.36 - 56.76 + lge)
+
+```
+
+
+##d)
+```{r}
+omega <-  63.56 + 56.76 - 64.80 - 38.72
+marg <- sqrt(MSe * 4/25)
+t <- omega/marg
+t
+
+2*(1-pt(t,120))
+```
+
+
+
+##e)
+```{r}
+plot(function(x) dt(x, df=120), -5,5, main="t distribution with df=120", ylab="Density")
+abline(v=t, col = "red")
+
+```
+
+
+
+#P4.1
+
+##a) 
+
+```{r}
+cars <- c(4.6, 4.3, 4.4, 4.7, 4.8, 6.2)
+SStrt <- 4*5*var(cars)
+MStrt <- 4*var(cars)
+SSE <- 2.25
+MSE <- 2.25/18
+F_stat <- MStrt/MSE
+SStrt;MStrt;SSE;MSE;F_stat
+```
+
+
+```{r}
+1 - pf(F_stat, 5, 18)
+```
+
+
+##b)
+```{r}
+#1st contrast
+
+lg1 <- qt(0.975, 18)*sqrt(MSE*(4/16 + 2/4)/4)
+omega1 <- -cars[1]/4 - cars[2]/4 + cars[3]/2 + cars[6]/2 - cars[4]/4 -cars[5]/4
+c(omega1 - lg1, omega1 + lg1)
+
+```
+
+```{r}
+#2nd contrast 
+lg3 <- qt(0.975, 18)*sqrt(MSE*6/4)
+omega3 <- cars[1] + cars[2] + cars[3] - cars[6] - cars[4] - cars[5]
+c(omega3 - lg3, omega3 + lg3)
+
+```
+
+
+```{r}
+#3rd contrast
+lg2 <- qt(0.975, 18)*sqrt(MSE*4/4)
+omega2 <- cars[1] - cars[2] + cars[4] - cars[5]
+c(omega2 - lg2, omega2 + lg2)
+```
+
+
+
+
+
+
+##c
+```{r}
+cont1 <- c(-1/4, -1/4, 1/2,-1/4, -1/4, 1/2 )
+cont2 <- c(1,1,1,-1,-1,-1)
+sum(cont1*cont2)/4
+```
+
+
+
+
+
+
+
+
+
+
+
+

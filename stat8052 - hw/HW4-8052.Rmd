@@ -1,0 +1,506 @@
+---
+title: "HW4"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+```
+
+
+
+
+
+# 1. P8.6 
+```{r}
+grass.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr8.6",header=TRUE)
+grass.df$ht <- as.factor(grass.df$ht)
+grass.df$fert <- as.factor(grass.df$fert)
+grass.df$int <- as.factor(grass.df$int)
+
+```
+
+This is a 3x4x4 factorial design with:
+Ht (height of cut): 1,3,6 
+Cutting interval: 1,3,6,9 
+amount of nitrogen fertilizer: 0, 8, 16, 32
+
+
+First, fit a full model: 
+
+```{r}
+mod86 <- lm(y ~ ht + fert + int + ht*fert + ht*int + fert*int , data=grass.df)
+anova(mod86)
+```
+
+
+```{r}
+xtabs(~ ht + fert + int, data = grass.df)
+```
+Note that, we only have 1 observation for each conbination of ht, fert, and int. Thus, it is not possible for the full model to include the 3 way interaction htxfertxint since we have no replicates. Thus, for the full model above, we included all the main effects and all the possible two-way interactions. 
+
+
+
+
+First, we fit a linear regression with all the main effects, as well as all the two-way interactions between main effects. Then, we can check the model assumption:
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod86)
+```
+Above are diagonosis plots: looking at the Residual vs. fitted line. It seems that the points are equally spread around the horizontal line y=0, and there is no obvious trends or patterns. Thus, the equal variance assumption seems to meet. 
+Looking at the Normal Q-Q plot, the points do not deviate much from the dotted line especially at the two ends. Thus, the normality assumtion seems to meet. Thus, we do not need to transform the response.  
+
+
+```{r}
+anova(mod86)
+```
+From the ANOVA output, we can see that for the main effects, fert is statistically significant with p-value close to 0. Int is statistically significant with p-values close to 0 as well. For interaction effects, the interaction ht:int appears to be statisticalylt significant with p-values 0.039 0n a 0.05 significance level. The interaction fert:int appears to be statistically significant on a 0.05 significance level with p-values 0.01313. To investigate the interactions ht:int, and fert:int, we can start with interaction plots: 
+We first plot ht:int:
+```{r}
+with(grass.df, interaction.plot(x.factor = ht, trace.factor = int, response = y))
+```
+From the plot above, we can see that for cutting interval (int) 1 and 2, the lines appear to be parallel. However, for the high cutting intervals (int) 3 adn 4, the lines do not seem parallel. When ht 1 increase to 2, mean y for int 4 is increasing but is decreasing for int 3, and the reverse whe ht from 2 to 3. Thus, it appears there is an interaction between ht and int especially when int is high. Then, we can check the pairwise comparison: 
+
+```{r}
+aov0 <- aov(y ~ ht + fert + int + ht*fert + ht*int + fert*int , data=grass.df)
+TukeyHSD(aov0, "ht:int")
+```
+Above is the pairwise comparison with Tukey's HSD for the interaction between ht and int. There are several differences appear to be statistically significant on 0.05 significance level. For instance, ht 1, int 3 is significantly different from ht 1, int 1 (1:3-1:1) with p-value 0.0000008. Other significant difference can be interpreted in the similar manner.
+Then, we can explore the interaction between fert:int: 
+
+```{r}
+with(grass.df, interaction.plot(x.factor = fert, trace.factor = int, response = y))
+```
+Above is the interaction plot betwwen fert and int, we see as fert moves from 1 to 4, int 1, 2, and 4 are parellel. However, when fert moves from 3 to 4, int 3 seems to interact with int 4. Then we can do pairwise comparison: 
+
+```{r}
+TukeyHSD(aov0, "fert:int")
+```
+There are many differences seem to be statistically significant on 0.05 significance level. For instance, fert 2, int 3 is significantly diffferent from fert 1, int 1 (2:3-1:1) with p-values 0.0000008. Other significant differences can be interpreted in a similar manner.  
+
+```{r}
+anova(mod86)
+```
+Looking at the ANOVA output again, we can explore pairwise comparison for significant main effects fert and int.
+
+```{r}
+TukeyHSD(aov0, "fert")
+```
+Above is the pairwise comparison by Tukey HSD for fert, we can see fert 2 and 1 is signiificantly different, 3 and 1 is significantly different, 4 and 1 is significantly different, 4 and 2 is significantly different, 4 and 3 is significantly different. Below is the uinderline diagram: 
+```{r}
+sort(model.tables(aov0, type="mean")$tables$'fert')
+```
+
+Then, for int:
+```{r}
+TukeyHSD(aov0, "int")
+```
+Above is the output for pairwise comparison by Tukey HSD for int. IT appears all possible combination of differences are statisticalyl significant on 0.01 significance level. Below is the underline diagram: 
+
+
+```{r}
+sort(model.tables(aov0, type="mean")$tables$'int')
+```
+
+# 2. P9.3 
+For this problem, we are asked to explore the interaction effect for teh pacemaker delamination data interoduced in Problem 8.4.
+
+```{r}
+pace.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr8.4",header=TRUE)
+pace.df$flow <- as.factor(pace.df$flow)
+pace.df$temp <- as.factor(pace.df$temp)
+pace.df$laser <- as.factor(pace.df$laser)
+```
+
+
+
+
+First, we fit a full linear regression model including all the main effects, two-way interactions, and three-way interactions. 
+```{r}
+mod93 <- lm(y ~ flow*temp*laser, data=pace.df)
+summary(mod93)
+```
+
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod93)
+```
+For checking the assumptions, we could use the diagnosis plots above, from the residual vs. fitted plot, we can see the points spread more when fitted values ius big and spread less when fitted values are small. It seems the variance od residuals increases as the fitted values increase, which indicates unequal variance. Thus, we need to consider trasnformation of the response y. We first apply Box-cox transformation.
+
+
+
+
+```{R}
+bc_trans <- boxcox(mod93, lambda = seq(-4,4,0.1))
+```
+```{r}
+pos <- which.max(bc_trans$y)
+bc_trans$x[pos]
+```
+Box-cox transformation suggest using a power of 0.2 would be the best. However, looking at the plot above, we see that 0 is in the 95% confidence interval, and for convenience we pick 0 which is the log transformation of y. Refit the model and check for the assumtions
+
+
+```{r}
+pace.df$log_y <- log(pace.df$y)
+mod93b <- lm(log_y ~ flow*temp*laser, data=pace.df)
+par(mfrow = c(2,2))
+plot(mod93b)
+```
+Looking at the residual vs. fitted plot again, it looks better and points spread more equally above and below y=0 line compare to before.
+
+
+
+```{r}
+anova(mod93b)
+```
+Above is the ANOVA output for the full regression model. Seems like temp is the only significant variable with p-value close to 0. All the two way interactions do not appear to be statistically significant on 0.05 significance level except flow and laser with a p-value 0.01. The 3-way interaction is statistically significant with p-value 0.009. We investigate more with plots: 
+
+flow:temp
+
+```{r}
+with(pace.df, interaction.plot(x.factor = flow, trace.factor = temp, response = log_y))
+```
+
+Looking at the interaction plot, seems like temp 1 and 2 are parallel across flow from 1 to 2. Thus, there does not appear to be an interaction between flow and temp, as ANOVA output suggested (p-value 0.156)
+
+flow:laser: 
+```{r}
+with(pace.df, interaction.plot(x.factor = flow, trace.factor = laser, response = log_y))
+```
+When flow from 1 to 2, mean of log y decreases for laser level 2 and increases for laser level 1. Thus, there is an interaction between flow and laser, as suggested by teh ANOVA output (p-value 0.012). 
+
+
+temp:laser: 
+```{r}
+with(pace.df, interaction.plot(x.factor = temp, trace.factor = laser, response = log_y))
+```
+When temp from 1 to 2, the lines are parallel for laser level 1 and 2. Thus, there does not appear to be an interaction between temp and laser, as suggesed by the ANOVA output (p-value 0.722).
+
+Now, plot the 3-way interaction: 
+```{r}
+lsmip(mod93b, laser ~ flow|temp)
+```
+
+For tem 1, when level of flow from 1 to 2, the line for laser 1 is parallel to laser 2. However, when temp is at 2, when level of flow from 1 to 2, the line for lasr 1 intersects laser level 2. This indicate there is a 3-way interaction between flow, temp, and laser as sugegsted by the ANOVA output (p-value 0.008).
+
+# 3. P10.3 
+
+## (a)
+
+```{r}
+ice.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr10.3",header=TRUE)
+ice.df$gum <- as.factor(ice.df$gum)
+ice.df$protein <- as.factor(ice.df$protein)
+```
+
+
+```{r}
+mod103 <- lm(response ~ gum * protein, data=ice.df)
+summary(mod103)
+```
+We first fit a lineasr regression model with all the main effects and the interaction terms. 
+```{r}
+par(mfrow = c(2,2))
+plot(mod103)
+```
+For checking the assumptions, we could use the doagnosis plots. For the residuals vs. fitted plot, the points seem to equally distributed above and below the horizontal line y=0, and there is no obvious trends or patterns. Thus, the equal variance assumption seems to hold. For the normal Q-Q plot, points seem to fall on the dotted line and there is no severe deviation at the two ends. Thus, the normality assumption seems to hold. Thus, we do not need to make any transformation of the response. 
+
+```{r}
+anova(mod103)
+```
+Above is the normal ANOVA output (Type I). However, this data set is unbalanced, we should use the Type II approach. 
+
+
+```{r}
+mod103.aov1 <- Anova(mod103, type="II")
+mod103.aov1
+```
+Above is the Type II ANOVA output. The gum appears to be a statistically significant varaible with p-value close to 0. Thus, we can conclude there is strong evidence that gum has effect on sensory rating. To find out which gum differ in there sensory ratings,  
+
+Here, we are specifically interested in testing hypothesis for specific parameters to see if one group of gum or protein has different mean compare to others. Thus, we need to consider Type III SAS approach 
+
+```{r}
+options(contrasts = c('contr.sum', 'contr.poly'))
+mod103.aov2 <- aov(response ~ gum * protein, data=ice.df)
+Anova(mod103.aov2, type='III')
+
+```
+Above is the ANOVA output for Type III SAS approach. gum appears again to be th only significant predictor. Then, we can do pairwise comparison: 
+TukeyHSD
+
+```{r}
+TukeyHSD(mod103.aov2, 'gum')
+```
+
+From the output above, note that for gum, gum 2's mean is significantly different from 1 with p-values close to 0. In addition,  gum 3 vs gum 1, gum 4 vs. gum 1, gum 3 vs gum 2, gum 4 vs. gum 2, gum 5 vs gum 2 are all statistically significant with p-values less than 0.05. Seems like gum 2's mean is significantly different from all other means. Gum 1 significantly different from 2, 3, 4 but not 5.   
+
+
+
+
+## Additionally (b)
+```{r}
+emmeans(mod103, specs = "gum")
+```
+for gum=1, the estimated marginal mean is 3.38, the 95% CI is (2.58,     4.18)
+
+
+## Additionally (c)
+
+```{r}
+emmip(mod103, protein ~ gum)
+```
+Above is the interaction plot for gum by protein. x-axis is levels of gum, y axis is marginal means. From the plot above, we can see that overall, when levels of gum move from 1 to 5, all the lines for protein seem to follow a similar parrten suggesting there is no intraction or weak/insignificant interaction. This aggress with the Type II and Type III SAS anovsa outputs with p-values all greater than 0.05. 
+
+# 4. P10.5 
+
+
+```{r}
+wheat.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr10.5",header=TRUE)
+wheat.df$variety <- as.factor(wheat.df$variety)
+wheat.df$location <- as.factor(wheat.df$location)
+wheat.df$temperature <- as.factor(wheat.df$temperature)
+```
+
+First of all, this is a 3x2x2 factorial design. Then, we noticed that there are some cells do not have data, thus this data set is also unbalanced. First, we fit a linear regression including all the main effects, 2-way intedractions, and 3-way interactions:
+
+```{r}
+mod105 <- lm(size ~ variety*location*temperature, data=wheat.df)
+summary(mod105)
+```
+
+Check assumptions: 
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod105)
+
+```
+
+From teh diagnosis plot above, for the residual vs. fitted plot, we see the points become more spread out as the fitted value increases. This indicates an unequal variance. Thus, transformation of the response is required. 
+
+```{r}
+mod105.bc <- boxcox(mod105, lambda = seq(-4,4,0.1))
+pos105 <- which.max(mod105.bc$y)
+mod105.bc$x[pos105]
+```
+From the box-cox transformation, it indicates the best lambda is -1.01. For convenience, we pick $\lambda = -1$. Thus, the transformation is then $Y^{-1}$
+
+
+```{r}
+wheat.df$size_reverse <- 1/(wheat.df$size)
+
+```
+
+Refit the model again:
+```{r}
+
+mod105.a <- lm(size_reverse ~ variety*location*temperature, data=wheat.df)
+par(mfrow = c(2,2))
+plot(mod105.a)
+
+```
+Now, the residuals looks more equally spread around the horizontal line with y=0. We can then proceed. 
+
+
+Type II SAS:
+```{r}
+Anova(mod105.a, type = "II")
+```
+Above is the output for ANOVA Type II SAS. For the main effects, location is statistically significant with p-value 0.022. Tempreture is significant with p-value 0.016 all below significance levewl of 0.05. All the 2-way interactions are not significant. The 3-way interaction is not significant. 
+
+
+
+
+
+
+Type III SAS: 
+```{r}
+options(contrasts = c('contr.sum', 'contr.poly'))
+mod105.aov <- aov(size_reverse ~ variety*location*temperature, data=wheat.df)
+Anova(mod105.aov, type='III')
+
+```
+Above is the outout from ANOVA type III SAS, the resuts are similar to Type II output as location and temperature appearns to be the only significant main effects. 
+
+Since we are particularly interested in variety and location, we could explore the interaction between variety and location:
+
+```{r}
+with(wheat.df, interaction.plot(x.factor = variety, trace.factor = location, response = size_reverse))
+```
+
+Above is the interaction plot between variety and location. As variety increases from 1 to 3, the lines for location 1 and 2 seem to be paralleled with each other. This agreed with the ANOVA output that the interaction term variety:location is not significant (p-value 0.67). 
+
+We are interested in variety and tempreture particularly. However, ANOVA outputs for both Type II and type III does not suggest variety is a significant main effect. Thus, we can explore tempreture futher with pairwise comparison: 
+
+
+```{r}
+TukeyHSD(mod105.aov, 'temperature')
+```
+Above is the Tukey HSD pairwise comparison for temperature. The difference is positive indicating mean response (1/size) is higher for temperature 2. The difference is also statistically significant with p-value 0.017. For completeness, we also check the pairwise comparison for location since it is an significant main effect. 
+
+
+
+```{r}
+TukeyHSD(mod105.aov, 'location')
+```
+Above output is the TukeyHSD for pairwise conmparison for location. Since the difference is positive, this indicates the mean response (1/size) is greater for location 2. Such difference is also statisticalyl significant with p-value 0.0043. 
+
+
+
+
+
+# 5.
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW4/P5.png)
+
+
+
+
+
+
+
+
+
+
+# 6. P10.6
+
+```{r}
+drug.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr10.6",header=TRUE)
+drug.df$trifluoperazine <- as.factor(drug.df$trifluoperazine)
+drug.df$diazepam <- as.factor(drug.df$diazepam)
+drug.df$calmodulin <- as.factor(drug.df$calmodulin)
+
+
+```
+
+
+1: absent 
+2: present
+Also, the number of observations for each condition is different. Thus, this is an unbalanced design. 
+
+first, we fit a linear regression including all main effects, 2-way interactions, and 3-way interactions
+```{r}
+mod106 <- lm(GABA ~ trifluoperazine*diazepam*calmodulin, data=drug.df)
+summary(mod106)
+
+```
+
+Check assumtions: 
+```{r}
+par(mfrow = c(2,2))
+plot(mod106)
+
+```
+For the residual vs. fitted plot, the variance is greater for fitted value around 1 and 0.6, and smaller when fitted values are around 1.2 and 0.4. Thus, unequal variance might be a concern. For normal Q-Q plot, most of the poitns seem to fall on the dotted line, thus the normality assumption seem to hold. Then, we can try Box-cox transformation. 
+
+
+
+```{r}
+mod106.bc <- boxcox(mod106, lambda = seq(-4,4,0.1))
+```
+
+```{r}
+pos106 <- which.max(mod106.bc$y)
+mod106.bc$x[pos106]
+```
+Box-cos transformation suggest lambda should be 0.93. However, since 1 is included in the 95% interval, we pick power of 1 which is no transformation. 
+
+
+
+```{r}
+Anova(mod106, type = 'II')
+```
+Above is the ANOVA output for Type II SAS, all the main effects appear to be statisticalyl significant with p-values for trifluoperazine and diazepam close to 0, and  calmodulin 0.033. For 2-way interaction, trifluoperazine:calmodulin is significant with p-value 0.0004. Also, the 3-way interaction is statisticalyl significant as well. Thus, drugs seem to effect the GABA release. 
+
+
+
+
+```{r}
+options(contrasts = c('contr.sum', 'contr.poly'))
+mod106.aov <- aov(GABA ~ trifluoperazine*diazepam*calmodulin, data=drug.df)
+Anova(mod106.aov, type='III')
+
+```
+
+
+```{r}
+TukeyHSD(mod106.aov, 'trifluoperazine' )
+```
+For TukeyHSD pairwise comparison for trifluoperazine, when the trifluoperazine is present, the mean GABA is 0.305 less. Such difference is statisticalyl signicant with p-value close to 0.
+
+
+
+```{r}
+TukeyHSD(mod106.aov, 'diazepam' )
+```
+For TukeyHSD pairwise comparison for diazepam, diazepam is present the mean response GABA would decrease 0.54. Such difference is statistically significant with p-value close to 0. 
+
+
+
+```{r}
+TukeyHSD(mod106.aov, 'calmodulin' )
+```
+For TukeyHSD pairwise comparison for calmodulin, when calmodulin is present, the mean GABA is 0.1125 more than absent. Such difference is statisticalyl significant with p-value 0.033. 
+Then, we can do pairewise comparison for the significant interaction term: 
+
+
+
+
+```{r}
+TukeyHSD(mod106.aov, 'trifluoperazine:calmodulin' )
+```
+For the TukeyHSD pairwisecomparison for the interaction term above, we see that trifluoperazine prtesent + calmodulin absent is significantly different from when both absent with p-value close to 0. trifluoperazine absent + calmodulin present is significantly different from trifluoperazine present + calmodulin absent with p-value close to 0. Both trifluoperazine and calmodulin present is significantly different from trifluoperazine present + calmodulin absent with p-value 0.0006. We could use plots to visualize the interaction. 
+
+
+
+
+```{r}
+emmip(mod106, trifluoperazine ~ calmodulin)
+
+```
+From the plot above, we see that as levels of calmodulin from being absent to present (1 to 2), the marginal mean for GABA increases more drastically when trifluoperazine is present (=2), and decreases when trifluoperazine is absent (=1). 
+From the ANOVA outputs, we see that the 3 -way interaction appears to be sginificant, we can also visualize this: 
+
+
+
+```{r}
+lsmip(mod106, trifluoperazine ~ calmodulin|diazepam)
+```
+
+From the plot above, we see that when diazepam is absent (=1), there is an interaction effect between calmodulin and trifluoperazine. However, the interaction effect does not appear when diazepam is presnet (=2), as both lines are almose parallel. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

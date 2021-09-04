@@ -1,0 +1,417 @@
+---
+title: "HW2"
+author: "Zhaoliang Zhou"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+Due Monday 2/8/2021 by 11:59pm 
+
+```{r,message=FALSE, warning=FALSE}
+library(dplyr)
+library(plyr)
+library(agricolae)
+library(EnvStats)
+library(MASS)
+library(gmodels)
+library(multcomp)
+```
+
+
+
+
+# 1. P5.1
+
+For this problem, our hypothesis are: 
+$$H_0: \mu_1 = \mu_2 =...=\mu_5$$
+
+$$H_a: \mu_i \neq \mu_j$$
+For $i \neq j$
+
+## (a)
+```{r}
+#load the data
+df32 <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr3.2",header=TRUE)
+
+df32 <- df32 %>%
+    mutate(companions = case_when(trt == 1 ~ 'none',
+                                  trt == 2 ~ '1 pregnant',
+                                  trt == 3 ~ '1 virgin',
+                                  trt == 4 ~ '8 pregnant',
+                                  trt == 5 ~ '8 virgin'))
+df32$companions <- as.factor(df32$companions)
+
+```
+
+
+
+```{r}
+#fit a linear regression first. 
+mP51 <- lm(days ~ companions, data=df32)
+```
+
+First, we need to check the assumptions: 
+```{r}
+par(mfrow = c(2,2))
+plot(mP51)
+```
+
+Looking at the Residual vs. Fitted plot above, we see that residuals are equally distributed aroubnd the horizontal line $y=0$. Thus, the equal variance assumtion seems to hold. Looking at the Normal Q-Q plot above, we see that most of the points fall on the 45 degree line. Thus, the normality assumption seems to hold. From the studey design, the independence seems to hold. Thus, all the assumtions are hold and reasonable. 
+```{r}
+mP51.aov <- anova(mP51)
+mP51.aov
+```
+From an ANOVA test, we obtained a test statistic $F=13.612$ with corresponding p-value very close to 0. Since our p-value is less than any of the conventional significance level, we would reject the null hypothesis. We can conclude that at least one of the treatment mean is different from the others, and that reproductive activities affect longevity. Then, we proceed to the Turkey procedure.   
+
+
+```{r}
+cisP51 <-TukeyHSD(aov(days ~ companions, data=df32), which = "companions", ordered=T, conf.level = 0.95)
+cisP51
+
+```
+
+```{r}
+daysmean <- ddply(df32, "companions", summarise, mean = mean(days))
+orderedmean <- daysmean[order(daysmean$mean),]
+orderedmean
+```
+
+Underline diagram is below: 
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW2/under1.png)
+
+From the above diagram, we can see that except for the treatment 8-virgin, other treatments do not have significant different mean from each others. 
+
+
+
+## Additioanlly (b)
+
+### computation using R 
+
+```{r}
+print(SNK.test(mP51, "companion", group=F))
+```
+
+
+
+### calculation by hand
+
+1st step:
+$$
+g=5 \\
+n=25\\
+\epsilon=0.05 \\
+MSe = 219.2793 \\
+df_E=120 \\
+\sqrt{MSe (\frac{1}{n} + \frac{1}{n})}=4.1884.
+$$ 
+$$Halfwidth = \frac{q_{0.05}(5,120)}{\sqrt{2}} \sqrt{MSe (1/n + 1/n)} \\
+=\frac{3.9169}{\sqrt{2}}*4.1884 \\
+=11.6$$
+
+$$center = \bar{y}_{max} - \bar{y}_{min} = 64.8-38.72=26.08 >11.6  $$
+
+Thus, 0 is not included in the confidence interval, which provides strong evidence to reject the null hypothesis. We can conclude the treatment mean for 8 virgin and 1 virgin does differ significantly. Then, within the group of 5 means, we then compare the new extremes in set of 4. Now, we have: 
+$$Range = k = g-1 = 5-1=4$$
+
+$$Halfwidth = \frac{q_{0.05}(4,120)}{\sqrt{2}} \sqrt{MSe (1/n + 1/n)} \\
+=\frac{3.685}{\sqrt{2}}*4.1884 \\
+=10.91$$
+
+For 8 virgin vs 1 pregnant, the center is $63.56-38.72=24.48>10.91$, and thus 8 virgin is different from 1 pregnant. 
+For 8 pregnant vs. 1 virgin, the center is $64.8-56.76=8.04$ and thus they are not significantly different. 
+Then, in set of 8 virgin and 1 pregnant, we can compare extremes in sets of 3. Now we have:
+
+$$Halfwidth = \frac{q_{0.05}(3,120)}{\sqrt{2}} \sqrt{MSe (1/n + 1/n)} \\
+=\frac{3.356}{\sqrt{2}}*4.1884 \\
+=9.94$$
+
+Thus, for 8 virgin vs. None, we have center $63.36 - 38.72=24.64 > 9.94$. Thus 8 virgin is significantly different from None group. 
+
+Then, we compare the extremes in sets of 2. We have: 
+$$Halfwidth = \frac{q_{0.05}(2,120)}{\sqrt{2}} \sqrt{MSe (1/n + 1/n)} \\
+=\frac{2.8}{\sqrt{2}}*4.1884 \\
+=8.29$$
+
+For 8 virgin vs. 8 pregnant, we have center $56.76-38.72=18.04>8.29$ thus 8 virgin group is significantly different from 8 pregnant group.
+The underline diagram is: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW2/under1.png)
+
+
+
+# 2. P5.3
+
+For this problem, the researcher has constructed 5 preplanned contrasts, and the p-values are:
+```{r}
+p_val <- c(0.03, 0.04, 0.23, 0.47, 0.68)
+p_val
+```
+The p-values are already in increasing order. For assessing the statistical significance of those p values, we need to consider different cases, and for each case we control for different types of error rate.
+
+### Case I: Bonferroni method
+For Bonferroni method, we use reject $H_{0(i)}$ if:
+$$ p_{(i)} < \epsilon/K$$
+For this case, we have $\epsilon = 0.05$ and $K=5$, thus our critical value for Bonferroni method is: 
+$$ p_{(i)} < \epsilon/K \\
+p_{(i)} < 0.05/5 \\
+p_{(i)} < 0.01$$
+
+Thus, the critical value is 0.01. Looking at the p-values from above, none of those p-values are statisticaly significant (all greater than 0.01). Thus, if we consider using Bonferroni method, none of those p-values are statistically significant. When using this test, we can control the strong familywise error rate, and we can obtain simultaneous confidence intervals. 
+
+
+
+
+
+### Case II: Holm method
+For Holm method, we reject $H_{0(i)}$ if:
+$$ p_{(j)} < \epsilon/(K-j+1)   $$
+Then, we need to order the p-values as increasing order: 
+```{r}
+p_val
+```
+the first 0.03 is the smallest value, thus $j=1$, and so on. 
+
+```{r}
+a <- 0.05/(5-1+1)
+b <- 0.05/(5-2+1)
+c <- 0.05/(5-3+1)
+d <- 0.05/(5-4+1)
+e <- 0.05/(5-5+1)
+
+crit_vals <- c(a,b,c,d,e)
+crit_vals
+```
+
+```{r}
+p_val < crit_vals
+```
+For the original p-values, none of them is less than the corresponding critical values. For example, p-value = 0.03 > 0.01. For this method, we can control for the strong familywise error rate. 
+
+
+
+
+
+### Case III: FDR method
+For the FDR method,  we reject $H_{0(i)}$ if:
+
+$$p_{(j)} < j \epsilon/K$$
+
+Thus, the critical values for each p-value are: 
+
+```{r}
+a1 <- 1*0.05/5
+b1 <- 2*0.05/5
+c1 <- 3*0.05/5
+d1 <- 4*0.05/5
+e1 <- 5*0.05/5
+
+crit_vals1 <- c(a1,b1,c1,d1,e1)
+crit_vals1
+```
+
+```{r}
+p_val
+```
+
+```{r}
+p_val < crit_vals1
+```
+
+When using FDR procedure, none of the p-value is statistically significant, since each p-value is greater than its corresponding critical values. For example, p-value=0.03 > 0.01. When using this procedure, we obtain correct result if the tests are statistically independent. We can control the FDR but not the strong familywise error rate. Thus, the issues we need to resolve is first which error rate is of our interest. Secondly, we need to consider if the tests are statistically independent. Then, we also needto consider if we would pprefer a simultaneous confidence interval. 
+
+
+
+
+# 3. E6.3
+```{r}
+dose.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/ex6.3",header=TRUE)
+dose.df$drug <- as.factor(dose.df$drug)
+```
+
+
+```{r}
+#fit a linear regression first
+mod.e63 <- lm(dose ~ drug, data=dose.df)
+
+```
+
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(mod.e63)
+```
+
+From the diagnosis plots above, if we look at the Residual vs. Fitted plot, we can see the residuals become more spread out as the fitted values increase. This is a sign that the residual varaince depends on teh mean or unequal variance. Thus, we might need to consider some transformation of the responses. 
+From the normal Q-Q plot, we can see most the points fall on the diagonal line. Thus, the normality assumption seems to hold. 
+
+
+
+First, we try box-cox transformation: 
+```{r}
+boxtr <- boxcox(mod.e63, plotit = T)
+
+```
+
+
+
+
+```{r}
+which.max(boxtr$y)
+```
+It seems like the log-likelihood reaches its max when lamda is 0. Thus, Box-cos transforamtion does not seem to work. Next, we can try lo transformation: 
+
+```{r}
+dose.df$log_dose <- log(dose.df$dose)
+
+mod.e63b <- lm(log_dose ~ drug, data=dose.df)
+par(mfrow=c(2,2))
+plot(mod.e63b)
+```
+From the Residual vs. Fitted plot, we can see the variance of the residuals became more constant compare to before while the normality assumtion still seem to hold from the normal Q-Q plot. Before pairewise comparison test, we should do a global test where the null hypothesis: all means are equal across 4 groups. versus the Alternative hypothesis: at least one group mean is different. 
+
+```{r}
+anova(mod.e63b)
+
+```
+From the ANOVA result table above, we obtained a test statistic $F=8.6037$ with corresponding p-value 0.0002. Since our p-value is less than 0.01, we would reject the null hypothesis, Thus, we can conclude that there is strong evidence to support at least one dosage group is different from the others. Then, we can proceed to pairewise comparison. 
+```{r}
+cisE63 <- TukeyHSD(aov(log_dose ~ drug, data=dose.df), which = "drug", ordered = T, conf.level = 0.95)
+cisE63
+
+```
+From the Tukey multiple comparisons of means table above, we can see that drug 3 and drug 4 are equivalent, drug 2 adn drug 4 are equivalent, drug 2 and drug 3 are equivalent
+The underline diagram is follow: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW2/under2.png)
+
+
+```{r}
+dosemean <- ddply(dose.df, "drug", summarise, mean = mean(dose))
+orderedmean2 <- dosemean[order(dosemean$mean),]
+orderedmean2
+```
+
+Since smaller lethal doses are considered more effective, we can see drug 4 is more effective and drug 2 is less effective. 
+
+
+
+## Additionally (b)
+When comparing treatments with "best", we can use the MCB method. 
+
+```{r}
+d <- 2.13
+MSe <- 0.0966
+se <- sqrt(MSe * 2/10)
+wid <- se*d
+min(dosemean$mean) + wid
+```
+```{r}
+which(dosemean$mean < min(dosemean$mean) + wid)
+```
+the drug 3 is similar to the most effective drug which is 4.  
+
+
+
+# 4. E6.5
+
+plot a): it is a right openeing magaphone shape. This indicates that the varaince of the residuals increases as the response mean increase. This indicates a violation of the equal variance assumtion. 
+
+plot b)the y axis of this plot is the response y, while the x axis is rankit, this plot tells us nothing about normality, independence, and constant variance. 
+
+plot c) from this plot we can see some points are clusted together, and some clusters are above the horizontal line $y=0$ and some are below, which indicates the residuals are clustered in time. This could indicate there is autocorrelation between residuals, and this could be a violation of the independence assumptions. 
+
+
+plot d) from this plot, the varaince of residuals at each yhat seems similar. Thus, this plot might indiacte constant variance. 
+
+
+
+
+
+
+
+# 5. P6.1
+
+## (a)
+```{r}
+grass.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr6.1",header=TRUE)
+```
+
+
+```{r}
+grass.df$trt <- as.factor(grass.df$trt)
+```
+
+
+```{r}
+mod.p61 <- lm(y ~ trt, data=grass.df)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod.p61)
+```
+
+From the diagnosis plot above and from the REsidual vs. fitted plot, we see the the variance of the residual decreases as the mean response increases. this might indicate a violation of constant variance assumption. Thus, we might consider transformation such as box-cox transformation
+```{r}
+bc.p61 <- boxcox(mod.p61, plotit = TRUE)
+
+```
+From the plot above we can see the lambda is clse to 2 when the lo-likelihood function reaches its max, and the 95% confidence interval includes 1. Since the CI includes 1, for simplicity, no transformation is needed. 
+
+
+## (b)
+For this problem, our Null hypothesis is: means for each treatment groups are equal. Our Alternative hypothesis is: at least one group mean is different from the others. 
+```{r}
+mod.p61b <- aov(y ~ trt, data=grass.df)
+anova(mod.p61b)
+```
+From the ANOVA table above, we obtained a test statistic $F=71.203$ with degrees of freedom 5 and 18, and a corresponding p-value essentially 0. Thus, we would reject the null hypothesis. WE can conclude there is strong evidence to support at least one nitrogen treatment group mean is different from the others. 
+
+
+## (c)
+
+For this problem we need to investigate the quadratic effect of nitrogen under non-irregated situation. Thus, we can consider a contrast with coefficients $(1, 0, -1, -1, 1, 0)$
+```{r}
+fit.contrast(mod.p61b, "trt", coeff = c(1, 0, -1, -1, 1, 0))
+```
+We obtained a test statistic $t=-1$ and corresponding p-value 0.33. Since our p-value is greater than 0.05, we failed to reject the null hypothesis. Thus, there are no significant quadratic effects of nitrogen under non-irragated conditions. 
+
+
+
+
+## (d)
+For this problem, we need to investigate effect of irrigation. We can use contrast to solve this problem. Since Nitrogen level 2 and 3 do not have corresponding irrigation group, we need to set coefficients for those two groups to 0.
+First, we can consider 1N, 4N with 1Y and 4Y, thus we would have a contrast: $(0.5, -0.5, 0, 0, 0.5, -0.5)$
+
+
+```{r}
+fit.contrast(mod.p61b, "trt", coeff = c(0.5, -0.5, 0, 0, 0.5, -0.5))
+```
+Then, consider 1N vs 1Y:
+```{r}
+fit.contrast(mod.p61b, "trt", coeff = c(1, -1, 0, 0, 0, 0))
+```
+Then, consider 4N vs. 4Y:
+```{r}
+fit.contrast(mod.p61b, "trt", coeff = c(0, 0, 0, 0, 1, -1))
+```
+
+From the comparison between different treatments, we can see that there is significant effect of irrigation under nitrogen level 1 (p-value=0.00047 < 0.05), but not significant effect under nitrogen level 4 (p-value=0.623 > 0.05). When we compare the quack grass in both nitrogen level 1 and level 4, we can see there is a significant effect of irrigation (p-value=0.016 <0.05). 
+
+
+## (e)
+For this problem, we can consider setting the treatment group nitrogen level 1 non irrigation group as the control group and compare other groups to this group suing Dunnet's comparison to a control
+
+```{r}
+g <- glht(mod.p61, 
+          linfct = mcp(trt = contrMat(1:6, type = "Dunnet", base=1)),
+          alternative = "less")
+summary(g)
+```
+
+From the output above, we can see every group significantly different from group 1.Thus, we can conclude notrogen level 1 with no irrigationis big blustem best able to prevent the invasion by quack grass, and the response at this set of ciditions significantly different from other conditions (all p-values are less than 0.05).
+
+
+

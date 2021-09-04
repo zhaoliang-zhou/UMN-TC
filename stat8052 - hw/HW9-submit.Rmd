@@ -1,0 +1,298 @@
+---
+title: "HW9-8052-submit"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Five standard questions: 
+(a) Draw the Hasse diagram for this model.
+(b) Determine the appropriate denominators for testing each term using
+the restricted model assumptions.
+(c) Determine the expectedmean squares for each term using the restricted
+model assumptions.
+(d) Determine the appropriate denominators for testing each term using
+the unrestricted model assumptions.
+(e) Determine the expected mean squares for each term using the unrestricted
+model assumptions.
+
+
+
+
+# 1. P12.1
+
+## (a)
+For this problem, we have brand which has 4 levels and is fixed. We methods which has 2 levels and also fixed. We also have filters which has 8 levels and is selected at random. There are no nested effect present in this problem, all effects are crossed. Let B denoted to brand, M denoted to methods, and F denoted to filter. 
+The Hasse diagram is shown below: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121a.jpg){#id .class width=40% height=40%}
+
+
+
+The F-tests for each term is listed below (restricted): 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-a-tests.png)
+
+
+
+The EMS for each term is listed below (restricted): 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-a-ems.png)
+
+
+
+## (b)
+For this problem, Let A denote to Lab, and thus A has 6 levels. Let B denote to samples, and thus B has 7 levels. Because each sample will have two measurements, thus we have n=2 replicates. Since we have samples within groups and each group is assigned to a lab, thus we can see that samples are nested in labs. 
+The Hasse diagram is shown below: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121b.jpg){#id .class width=40% height=40%}
+
+
+
+
+The F-tests for each term is listed below (restricted):
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-b-tests.png)
+
+
+
+
+
+The EMS for each term is listed below (restricted): 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-b-ems.png)
+
+
+
+
+
+
+
+
+## (c)
+For this problem, similar to (b) above, we have A-lab with 6 levels; B-sample with 7 levels. Now denote C to be the subsamples which is random with 2 levels.
+
+
+The Hasse diagram is shown below: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121c.jpg){#id .class width=40% height=40%}
+
+
+The F-tests for each term is listed below (restricted):
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-c-tests.png)
+
+
+
+
+The EMS for each term is listed below (restricted): 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p121-c-ems.png)
+
+
+
+
+
+
+
+
+
+
+
+
+# 2. E12.2 
+
+## (a)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E122-a.jpg){#id .class width=40% height=40%}
+
+
+
+
+## (b)
+
+For the test, for convenience I only wrote the test part using letters just similar to Lab 5. However, it actually represent MS. For example, A represents $MS_A$ and E represents $MS_E$ etc. 
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E122-b.png)
+
+## (c)
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E122-c.png)
+
+
+
+
+
+## (d)
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E122-d.png)
+
+
+
+
+
+
+## (e)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E122-e.png)
+
+
+
+# 3. E12.3 
+
+## (a)
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E123-a.jpg){#id .class width=40% height=40%}
+
+
+
+
+## (b)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E123-b.png)
+
+## (c)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E123-c.png)
+
+
+## (d)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E123-d.png)
+
+
+
+
+
+
+
+
+
+
+
+
+## (e)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/E123-e.png)
+
+
+
+
+
+# 4. P12.3 
+For this problem, let denote A to be clinic with 4 levels and fixed. Denote B to be doctors with 3 levels and is random. Denote C to b the checkup type with 2 levels and fixed. Denote G to be family group with 2 levels and is random. We also have doctors nested within clinics. Other factors are crossed.  
+
+Thus, the Hasse diagram is shown: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p123a.jpg){#id .class width=45% height=45%}
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p123-tests.png)
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW9/p123-ems.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 5. P12.8
+
+
+
+For this problem, Denote A to subject which has 10 levels and is random; B to volum which has 2 levels and is fixed; C to days which has 4 levels and fixed and also nested in volumn. 
+```{r}
+br.df <- read.table("http://www.stat.umn.edu/~gary/book/fcdae.data/pr12.8",header=TRUE)
+br.df$day <- as.factor(br.df$day)
+br.df$taken <- as.factor(br.df$taken)
+br.df$subject <- as.factor(br.df$subject)
+```
+
+
+
+
+
+
+
+
+For this problem, The Hasse diagram, and all the detailed calculation and steps are included in the Appndix. I only used R to obtain estimated values such as for MS, differential effects, and also for numerical calculations. 
+Also, for this problem, we can following the steps shown in lecture notes from 12.60-12.62
+
+
+ 
+
+
+
+
+
+The ANOVA table is below: 
+```{r}
+options(contrasts = c('contr.sum', 'contr.poly'))
+mod <- lm(retained ~ taken*(subject/day), data=br.df)
+anova(mod)
+```
+
+We can get the the treatment effects from the coefficients: 
+```{r}
+summary(mod)
+```
+
+From the ANOVA output, we can have the following MS:
+```{r}
+msa <- 0.5704
+msb <- 4.1926 
+msc <- 0.9513 
+msab <- 0.0961 
+msac <- 0.3419
+```
+
+```{r}
+ms <- (1/40)*msa - (3/40)*msac + (1/20)*msab + (1/20)*msc
+ms
+```
+
+```{r}
+numerator <- ms^2
+denom <- (1/40)^2 * (msa^2 /9) + (3/40)^2 * (msac^2 / 18) + (1/20)^2 * (msab^2 / 9) + (1/20)^2 * (msc^2 /2)
+df1 <- numerator/denom
+df1
+```
+
+
+```{r}
+t_crit <- qt(0.025, df1, lower.tail=FALSE)
+t_crit
+```
+10 ml 95% CI:
+```{r}
+upper_10 <- 2.253 + t_crit*sqrt(ms)
+lowr_10 <- 2.253 - t_crit*sqrt(ms)
+
+
+upper_10
+lowr_10
+```
+Thus, for 10 ml, we hav 95% CI (0.92, 3.59)
+
+
+20 ml 95% CI:
+```{r}
+upper_20 <- 2.9 + t_crit*sqrt(ms)
+lowr_20 <- 2.9 - t_crit*sqrt(ms)
+
+
+upper_20
+lowr_20
+
+```
+
+Thus, for the 20ml, we hav 95% CI (1.56, 4.24)
+
+
+# Appndix
+
+
+

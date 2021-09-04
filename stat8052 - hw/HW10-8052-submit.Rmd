@@ -1,0 +1,441 @@
+---
+title: "HW10-stat8052"
+author: "Zhaoliang Zhou"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+
+```{r,message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mvtnorm)
+library(nCDunnett)
+library(MASS)
+library(emmeans)
+library(car)
+library(conf.design)
+library(faraway)
+library(multcomp)
+library(nlme)
+library(lme4)
+library(pbkrtest)
+library(broom.mixed)
+```
+
+
+
+# 1. Oxboys
+
+
+
+
+
+
+```{r}
+data(Oxboys)
+
+ox.df <- Oxboys
+
+ox <- groupedData(height ~ age|Subject, 
+                  data = as.data.frame(ox.df))
+```
+
+
+
+
+Analyze the Oxboys data in Pinheiro and Bates, p. 437, section A.19, displayed on p. 99.
+a) Describe the growth curves (height vs. age) for the boys (subjects). Assume a subject-specific intercept, and uncorrelated within-subject errors.
+
+```{r}
+par(mfrow=c(1,1))
+plot(ox)
+```
+Above is the plot where subject specific intercept and slop is assumed. From the plot above, we can see than as the standardized age increases, height also increases. The rate of increase might be different for different subject. For example, we can see subject 19 grows a lot faster than subject 10. 
+
+
+
+• Test whether the slope is zero.
+H_0: the slope is 0;
+H_1: the slope is not 0
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+m.lme <- lme(height ~ age, data=ox,
+             random = ~age|Subject)
+anova(m.lme)
+```
+From the ANOVA output above, we can see that the age variable has a test statistic F=376.503 with corresponding p-value less than 0.0001. Since we have a significant p-value, we would reject the null hypothesis, and we can conclude the slope is not 0 
+
+
+• Test whether the slope is the same for all boys
+We want to test if it is necessary to fit different slope of age for each subject
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+#model with different slope for different subject
+m.lme <- lme(height ~ age, data=ox,
+             random = ~age|Subject)   
+
+#model with same slope for all subject 
+m1.lme <- lme(height ~ age, data=ox,
+             random = ~1|Subject)
+
+anova(m1.lme, m.lme)
+```
+FRom the anove output above, we see that the model with different slope for different subject has lower AIC and BIC. The LR of the two model is 215.9387 and p-value is less than 0.0001. All of those suggest that the model with different slope for different subject is more preferable. Thus, the slope is not the same for all boys. 
+
+
+
+
+• Assuming that the slope is the same for all boys, does adding a quadratic term for age improve the model fit? Perform a test.
+
+
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
+
+m1.lme <- lme(height ~ age, data=ox,
+             random = ~1|Subject)
+
+
+mq.lme <- lme(height ~ I(age) + I(age^2), data=ox,
+             random = ~1|Subject)
+anova(mq.lme)
+```
+The model above is the model assuming no subject specific slope, and a quadratic term in age. The age factor has a p-value 0.0012 <0.05 which is significant. If we want to see whether including the quadratic term improves the model, we need to first fit a model without the quadratic term and use LRT to compare. 
+
+
+```{r}
+anova(mq.lme, m1.lme)
+```
+From the above modelk comparison, we can see that the model including quadratic term has both lower BIC and lower AIC thus more preferable. The P-value associated with the LRT is 0.0022 which is significant. Thus, we can conclude including the quadratic term has improved the model. 
+
+• Select a model that fits the data well, write it up as a linear model with all assumptions, and shortly describe to a non-statistician client what this model means.
+
+
+From previous parts, we concluded that the slope is not the same for all boys, and a quadratic terms of age should be included.
+
+
+
+Thus, the model is written as: 
+
+$$y_{ij} =(\alpha_0 + \alpha_i) + (\delta_0 + \delta_i)*age_{ij} + (\theta_0 + \theta_i)*(age_{ij})^2 + \epsilon_{ij}$$
+where: 
+
+$y_{ij}$ is the response variable (height) for subject i at age j; 
+
+$(\alpha_0 + \alpha_i)$ is the subject specific intercept and $\alpha_i \sim N(0, \sigma_A^2)$ iid; 
+
+$(\delta_0 + \delta_i)$ is the subject specific slope and $\delta_i \sim N(0, \sigma_A^2)$ iid; 
+
+$(\theta_0 + \theta_i)$ is the subject specific quadratic slope and $\theta_i \sim N(0, \sigma_A^2)$ iid.
+We also assume $\epsilon \sim N(0, \sigma^2)$ and $\theta$, $\delta$ are independent of $\epsilon$. For this model, we fitted a subject specific slope intercept meaning that for each subject, the intercept and rate of growth is assumed to b different between subjects. In addition, we included a quadratic term in age because we observed a quadratic relationship between height growth and age. 
+
+
+
+• In your model, estimate all relevant parameters.
+
+First, fit the model in R 
+
+
+```{r}
+m3.lme <- lme(height ~ I(age) + I(age^2), data=ox,
+             random = ~age|Subject)
+anova(m3.lme)
+```
+
+
+paramter estimates: 
+
+```{r}
+fixef(m3.lme)
+```
+The estimated coeff for intercept is 149.06, for age is 6.52, and for age^2 is 0.742. 
+
+
+
+Remark: Use the R library(nlme). Use the default for the within-boy error (iε) correlation structure. What is it?
+
+We can investigate the within subject error structure "compound symmetry"
+
+```{r}
+m4.lme <- lme(height ~ I(age) + I(age^2), data=ox,
+             random = ~age|Subject, correlation = corCompSymm())
+getVarCov(m4.lme)
+```
+Above table shows the within-subject error correlation structure. 
+
+
+b) Provide a grid plot, showing for each subject the fitted height vs. age (lines) and the observed height versus age (points). Provide grid of residual plots, showing residuals vs. age for each subject. What do you conclude?
+
+
+Observed height vs. age
+```{r}
+par(mfrow=c(1,1))
+plot(ox)
+```
+
+
+
+
+
+
+Fitted height vs. age: 
+```{r}
+par(mfrow=c(1,1))
+plot(augPred(m4.lme))
+```
+
+Residuals vs. age 
+```{r}
+require(lattice)
+xyplot(resid(m4.lme) ~ age|Subject, data=ox, layout=c(6,6),
+       panel = function(x,y){
+         panel.xyplot(x,y)
+         panel.lines(range(x), c(0,0))
+       })
+
+```
+First, we can conclude that height increases as age increases, and each subject has a different rate of increase. From both the observed and fitted height vs. age, we could observe non linear trends in increasing in height. Thus, including a quadratic in age is reasonable. From the residual vs. age, we can see the quadratic pattern more clearly. For example, take subject 19, the residuals are positives for age at lower end, negative residuals at middle range of age, then become positive as the higher end of age. 
+
+
+
+
+
+
+# 2
+
+```{r}
+library(faraway)
+data("ratdrink")
+rat.df <- ratdrink
+
+rat.df$treat <- as.factor(rat.df$treat)
+```
+
+
+
+
+## (a)
+
+Using the hint to get a first visual impression: 
+```{r}
+ratdrink.gd <- groupedData(wt ~ weeks|subject, data=rat.df)
+plot(ratdrink.gd, layout=c(5,6))
+```
+
+
+
+
+```{r}
+ggplot(rat.df, aes(y=wt, x = weeks, colour=treat)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", fill = NA)
+
+```
+The above plot is the overall plot showing wight versus weeks. We can see that overall, as week increases the weight also increases. The 3 different groups are marked by different color, and a linear regression line is fitted for each treatment group. From this plot, we can see that the control and thiouracil increases in a similar rate, and the thyroxine group increases in a slower rate. We then investigate more with three-panel plot with each for 1 treatment group.
+
+```{r}
+ggplot(rat.df, aes(x=weeks, y=wt, colour = treat)) +
+  geom_point() + 
+  facet_wrap(~ treat, ncol = 2, scales = "free") +
+  guides(colour = "none") + 
+  geom_smooth(method = "lm", fill = NA)
+
+```
+From the above plot, we can see that th control and thy treatment group increases in a faster rate than the thio treatment group. 
+
+
+
+## (b)
+Fit a linear longitudinal model that allows for a random slope and intercept for
+each rat. Each group should have a different mean line. 
+Randome slope + random intercept model
+```{r}
+fit.rat <- lmer(wt ~ weeks*treat + (weeks|subject),data=rat.df)
+
+summary(fit.rat)
+```
+
+i. The fixed effect intercept term.
+The fixed effect intercept term is estimated to be 52.88. This is the average weight for a rat in control group and 0 weeks. 
+
+
+ii. The interaction between thiouracil and week.
+The interaction between weeks and thiou group has estimated coeff -9.37. This means that if a rat is in group thiou, for 1 unit increase in weeks, the weight of the rat is expected to increase 26.48-9.37=17.11 on average. In the other words, the week effect for the thiou treatment group is 17.11. 
+
+
+
+iii. The intercept random effect SD
+From random effects, the intercept has SD 5.7. This measures the variability of the intercept across different rats. 
+
+
+
+
+## (c)
+Check whether there is a significant treatment effect.
+First, we want to fit a model where there is no interaction between weeks and treatment and is additive. Then, fit a second model without the treat factor. Then, we can use Kenward-Roger adjusted F-test to test the significance of the fixed effect treatment. 
+
+```{r}
+mod.1 <- lmer(wt ~ weeks+treat + (weeks|subject),data=rat.df)
+mod.2 <- lmer(wt ~ weeks+ (weeks|subject),data=rat.df)
+KRmodcomp(mod.1,mod.2)
+```
+Since from the above output, we see the p-value is 0.904 which is greater than 0.05. Thus, there is no strong evidence suggesting significant treatment effect.  
+
+
+
+## (d)
+Construct diagnostic plots showing the residuals against the fitted values and a
+QQ plot of the residuals. Interpret.
+
+
+```{r}
+diagD <- augment(fit.rat)
+```
+
+Residual vs.fitted: 
+```{r}
+ggplot(diagD, aes(x=.fitted, y=.resid)) + 
+  geom_point(alpha=0.3) + 
+  geom_hline(yintercept=0) + 
+  facet_grid(~ treat) + 
+  xlab("Fitted") + 
+  ylab("Residuals")
+```
+Above is the panel plot of residuals vs. fitted for each of the treatment groups. For the treatment group control and thiou, the residuals seem constant. However, for the thy group, we can observe a U shape where the residuals first decreases then increases which implies a quadratic pattern. 
+
+
+
+QQ plot: 
+```{r}
+ggplot(diagD, aes(sample=.resid)) + 
+  stat_qq() + 
+  facet_grid(~treat)
+```
+Above is the panl plot of QQ plots each for 1 treatnt group. For all three groups, we did not see any obvious curvetures especiually at the tails. Thus, we can say the residuals are approximately normally distributed.   
+
+## (e)
+Construct confidence intervals for the parameters of the model. Which random
+effect terms may not be significant? Is the thyroxine group significantly
+different from the control group?
+
+We can construct 95% CI using boostrap approach : 
+```{r}
+confint(fit.rat,method="boot")
+
+```
+From the output above, we can see that the random effect of interaction between weeks and thy treatment group has a 95% CI including 0 and thus can be insignificant. 
+
+Then, we want to compare thy group to the control group, we can use Dunnet method for multipl comparisonl;
+```{r}
+g <- glht(fit.rat,
+          linfct = mcp(treat=contrMat(1:3, type="Dunnet", base=1)))
+summary(g)
+```
+From the above output, we can see either teatment group thy or thio is not significantly differ from the control group as each has a p-value larger than 0.05. 
+
+
+## (f)
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW10/p2a.png)
+
+
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW10/p2b.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 3 P19.6
+
+
+
+## (b)
+This is a a nested design where 5 test flights for each of the 3 systems and crossed with tempreture and humidity. Because the system has already been decided thus the system variable should be considered fixed as well as flights. Since temperature will be made constant, thus temperature should also be considered as fixed. Since they can not control humidity, humidity should be considered as random. Also depends on the design, tempreture can be recorded either as a factor or covariate. Since can not control the humidity, humidity is a random covariate. Thus this is also a design with covariates. Here we assumed the temperature slope is constant for each flight and the slope for humiodity varies for each flight. 
+
+
+For the treatment, we have:
+df_trt = k-1 = 2, SST
+df_e = N-k = 15-3 = 12, SSE
+df_total = N-1=14, TSS
+
+
+
+Then for MSE: 
+MS_trt = SST/2 
+MS_e = SSE/2
+and the test statistic F = MS_trt/MS_e
+with df 2 and 12. 
+
+
+
+## (c)
+
+For this design, the 16 plots are random and nested in 3 locations which is a fixed variable. Since we only have 1 variety (treatment) for each plot, and there are no replicates, we do not have df for the error. The Hass Diagram can be drawn as follow: 
+![](C:/Users/leonz/Desktop/UMN/Spring 2021/STAT 8052/HW/HW10/p16-6c.png)
+
+
+Thus, for the EMS we have: 
+
+EMS(E) = V(E);
+
+EMS(P) = V(E) + V(P);
+
+EMS(L) = V(E) + V(P) + 16Q(L);
+
+For the tests, we have: 
+
+
+L: MS(L)/MS(P);
+
+P: MS(P)/MS(E) and this is not doable since df_e = 0. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
