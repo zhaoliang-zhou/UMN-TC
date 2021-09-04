@@ -3,16 +3,13 @@ import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
 import sys
-sys.path.append('../../../../DataScience/lib/')
-import pymei
-from dev.bind_prod_utils import utils as dev_utils
 import numpy as np
 import race_ebm_funcs as ref
 
 # starburst access credentials
 username = input('Enter your jumpcloud username: ')
 print('Enter your password:')
-conn = pymei.connect.presto(username=username, phi=True, starburst=True)
+conn = ...connect.presto(username=username, phi=True, starburst=True)
 
 #get the original data from starburst
 end_date = input('EBM end date(year-month): ') #in format year-month. Ex. 2020-12
