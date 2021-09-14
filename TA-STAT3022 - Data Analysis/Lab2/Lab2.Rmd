@@ -1,0 +1,145 @@
+---
+title: "Lab2"
+output: html_document
+---
+
+```{r}
+A <- read.table("Desktop/STAT3022-Lab/data/summer2012.csv",
+header = TRUE, sep = ",")
+
+#Apple: cmd+opt+c; Windows two backslash or slash
+```
+
+
+```{r}
+mean(A$AVG)
+```
+
+```{r}
+tapply(A$AVG,A$MN,mean)
+```
+
+```{r}
+sd(A$AVG)
+```
+
+```{r}
+var(A$AVG)
+```
+
+
+
+```{r}
+max(A$AVG)
+min(A$AVG)
+```
+
+
+```{r}
+which.max(A$AVG)
+which.min(A$AVG)
+```
+
+```{r}
+pmax(c(2, 3, 4), c(5, 2, 6))
+pmin(c(2, 3, 4), c(5, 2, 6))
+```
+
+
+```{r}
+plot(A$MAX, A$MIN)
+```
+```{r}
+plot(A$AVG)
+lines(A$AVG)
+```
+```{r}
+hist(A$AVG)
+```
+
+
+```{r}
+food=read.table( "/Users/zhaoliangzhou/Desktop/STAT3022-Lab/data/food.csv", sep = ",",header = TRUE)
+food <- read.csv("/Users/zhaoliangzhou/Desktop/STAT3022-Lab/data/food.csv")
+head(food)
+```
+
+```{r}
+plot(food$income, food$food_exp,
+ylim=c(0, max(food$food_exp)),
+xlim=c(0, max(food$income)),
+xlab="weekly income in $100",
+ylab="weekly food expenditure in $",
+main="Figure 2.2: A scatter diagram for the food expenditure model"
+)
+```
+
+
+
+
+```{r}
+mod1 <- lm(food_exp ~ income, data = food)
+smod1 <- summary(mod1)
+smod1
+```
+
+```{r}
+b1 <- coef(mod1)[[1]]
+b2 <- coef(mod1)[[2]]
+b1
+b2
+```
+```{r}
+plot(food_exp ~ income, data = food)
+abline(mod1)
+```
+```{r}
+names(mod1)
+```
+
+```{r}
+names(smod1)
+```
+
+```{r}
+mod1$coefficients
+```
+
+```{r}
+smod1$coefficients
+```
+
+
+
+
+```{r}
+x = c(21,34,6,47,10,49,23,32,12,16,29,49,28,8,57,9,31,10,21,
+26,31,52,21,8,18,5,18,26,27,26,32,2,59,58,19,14,16,9,23,
+28,34,70,69,54,39,9,21,54,26)
+y = c(47,76,33,78,62,78,33,64,83,67,61,85,46,53,55,71,59,41,82,
+56,39,89,31,43,29,55, 81,82,82,85,59,74,80,88,29,58,71,60,
+86,91,72,89,80,84,54,71,75,84,79)
+reg <- lm(y~x) #Create a linear model
+summary(reg)
+```
+
+
+```{r}
+resid(reg) #List of residuals
+```
+
+```{r}
+plot(density(resid(reg))) #A density plot
+```
+```{r}
+qqnorm(resid(reg)) # A quantile normal plot - good for checking normality
+qqline(resid(reg))
+```
+```{r}
+boxplot(resid(reg)) #A Boxplot plot
+```
+
+
+```{r}
+hist(resid(reg)) #A Histogram plot
+```
