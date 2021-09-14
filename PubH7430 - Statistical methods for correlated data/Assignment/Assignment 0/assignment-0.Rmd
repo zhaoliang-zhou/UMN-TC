@@ -1,0 +1,125 @@
+---
+title: "pubh7450-assign0"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+#1.load data
+```{r}
+chicks <- read.csv('C:/Users/leonz/Desktop/UMN/Fall 2021/PubH7430 - Statistical methods for correlated data/Assignment/Assignment 0/chicks.csv')
+head(chicks)
+chicks$Chick <- as.factor(chicks$Chick)
+chicks$Diet <- as.factor(chicks$Diet)
+```
+
+
+
+
+
+
+#2. 
+```{r}
+class(chicks$Chick)
+length(unique(chicks$Chick))
+```
+
+There are 50 chicks 
+
+
+```{r}
+summary(chicks$Chick)
+```
+
+
+
+For most of the chicks, there are 12 repeated measures. However, there are some missing measures. For example, chick 15 only has 8 measures, chick 18 only has 2 measures. 
+
+
+
+
+
+#3. outliers
+```{r}
+hist(chicks$weight)
+```
+
+```{r}
+boxplot(chicks$weight)
+```
+
+```{r}
+summary(chicks$weight)
+```
+
+Seems like there are some outliers present in this data 
+
+
+#4. weight change overtime 
+
+## Overall
+```{r}
+ggplot(data = chicks, aes(x = Time, y = weight)) + 
+  geom_point() + 
+  geom_smooth()
+```
+Overall, weight increases as time increases
+
+```{r}
+
+ggplot(data = chicks, aes(x = Time, y = weight, color = Diet)) + 
+  geom_point() + 
+  geom_smooth()
+```
+##individual
+
+```{r}
+gg.base <- ggplot(chicks, aes(x = Time, y = weight)) 
+gg.idline <- gg.base + geom_line(aes(color = Chick, group = Chick))
+gg.idline
+
+```
+
+
+
+#5. regression 
+
+
+
+If we assume each row is independent
+
+```{r}
+lm1 <- lm(weight ~ Time, data = chicks)
+summary(lm1)
+```
+
+
+```{r}
+lm2 <- lm(weight ~ Diet, data = chicks)
+summary(lm2)
+```
+
+```{r}
+lm3 <- lm(weight ~ Time + Diet, data = chicks)
+summary(lm3)
+```
+
+
+```{r}
+anova(lm1,lm3)
+```
+
+Seems like, if we assume each row is independent, variable Time and Diet are both statistically significant with p-values less than 0.05. 
+
+
+
+
+
+
+
+
+
+
+
