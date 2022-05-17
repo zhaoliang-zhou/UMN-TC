@@ -9,4 +9,5 @@ stat8052 - hw: contains my personal homework solution to assignmnet for stat 805
 
 Class names: 
 stat8051: Advanced regression techniques - linear, non-linear, and nonparametric methods
+
 stat8052: Applied statistical methods 2 - design of experiment and mixed-effect modeling
